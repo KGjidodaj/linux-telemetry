@@ -7,7 +7,7 @@
 # =================================================================
 
 # Variables
-Date_var=$(date)
+Date_var=$(date "+%Y-%m-%d %H:%M:%S")
 user=$(whoami)
 
 # using a divider to clarify output
@@ -38,9 +38,15 @@ if [[ "$User_choice" == "yes" || "$User_choice" == "Yes" ]]; then
 	echo "[*] CPU LOAD AVERAGE & UPTIME:"
 	uptime
 	echo ""
-	
 	echo "$DIVIDER"
 	echo " Audit Successfully Completed."
+	
+	#### Logging the metrics into system_audit.log
+	# Rewriting (metrics>>system_audit.log) so that they are shown to the user as they are saved in the logs!
+	free -h>>system_audit.log
+	df -h>>system_audit.log
+	uptime>>sustem_audit.log
+	#end of logging into system_audit.log
 else
 	echo "Goodbye then. Exiting..."
 	sleep 0.5
