@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # as r just to help with writing
 import random as r
 
