@@ -6,78 +6,109 @@
 # Description: It gathers metrics for CPU, RAM, and Disk.
 # =================================================================
 
-clear 
-# Variables
-Date_var=$(date "+%Y-%m-%d %H:%M:%S")
-user=$(whoami)
+clear # Keeping the terminal clean
+
+# Variables:
+
+## Date_var : Updates with every loop to show the time in the correct format ISO 8601.
+## answer : Checks user answer in the first read.
+## user_choice : Checks user choice for the case statement.
+
+session_date_var=$(date "+%Y-%m-%d %H:%M:%S")
+user=$(whoami) 
+
 
 # using a divider to clarify output
 DIVIDER="---------------------------------------------------"
 
 echo -e "Hello $user\n"
 
-
-while true
+while :
 	do
 
 	read -p "Would you like to learn your system metrics?(Yes/No) " answer
 
 	if [[ $answer == "Yes" || $answer == "yes" ]];then
 
-		echo "What would you like to do? Here are the options:"
-		echo -e "1.uptime\n2.free-h\n3.df -h /\n" 
+	        #### Logging the metrics into system_audit.log along with showing them to the screen for the user
+		echo "SESSION STARTED: $session_date_var" | tee -a "audit.log" #Session date that states when the user started the script (future idea of background work and automation)
 
-		read user_choice
-	      { #### Logging the metrics into system_audit.log along with showing them to the screen for the user
-       		echo "$DIVIDER"
-        	echo "   SYSTEM AUDIT REPORT - $Date_var "
-        	echo -e "$DIVIDER\n"
+		while [[ ! -f "flag.txt" ]] #If the file is not created by case 4 since an exit or break would not work.
+			do
+
+			echo "What would you like to do? Here are the options:"
+	                echo -e "1.uptime\n2.free-h\n3.df -h /\n4.Exit\n"
+
+	                read user_choice
 
 
-		case $user_choice in
+	       	      { echo "$DIVIDER"
+	        	Date_var=$(date "+%Y-%m-%d %H:%M:%S")
+			echo "   SYSTEM AUDIT REPORT - $Date_var "
+	        	echo  "$DIVIDER"
 
-			1)
-			   # 3. CPU LOAD
-        		   # 'uptime' show the Load Average (1, 5 and 15 minutes ago)
-		           echo "[*] CPU LOAD AVERAGE & UPTIME:"
-			   uptime
 
-			   sleep 0.5;;
-			2)
-			   # 1. RAM Check
-        		   # 'free -h' to convert to readable form (MB/GB)
-        		   echo "[*] MEMORY USAGE (RAM):"
-        		   free -h
-        		   echo ""
+			case $user_choice in
 
-			   sleep 1;;
-			3)
-			   # 2. Disk Check
-		           # 'df -h /' shows the space in the root partition (Root)
-        		   echo "[*] DISK SPACE ALLOCATION (Root /):"
-       			   ### (df -h) to be in human readable form with (/) to output info reovlving the root partition
-        		   df -h /
-        		   echo ""
+				1)
+				   # 3. CPU LOAD
+	        		   # 'uptime' show the Load Average (1, 5 and 15 minutes ago)
+			           echo "[*] CPU LOAD AVERAGE & UPTIME:"
+				   uptime
 
-			   sleep 0.5;;
-			*)
-			   echo "Invalid input"
+				   sleep 0.5;;
+				2)
+				   # 1. RAM Check
+	        		   # 'free -h' to convert to readable form (MB/GB)
+	        		   echo "[*] MEMORY USAGE (RAM):"
+	        		   free -h
+	        		   echo ""
 
-		esac
+				   sleep 1;;
+				3)
+				   # 2. Disk Check
+			           # 'df -h /' shows the space in the root partition (Root)
+	        		   echo "[*] DISK SPACE ALLOCATION (Root /):"
+	       			   ### (df -h) to be in human readable form with (/) to output info reovlving the root partition
+	        		   df -h /
+	        		   echo ""
 
-		echo ""
-        	echo "$DIVIDER"
-        	echo "       Audit Successfully Completed."
+				   sleep 0.5;;
+				4)
+				   #3. Quit choice
+				   touch flag.txt
+				   echo -e "          	 USER: $user EXITED\n "
 
-		} | tee -a "audit.log"
 
+				   sleep 0.5;;
+				*)
+				   echo "Invalid input";;
+
+			esac
+
+			echo ""
+	        	echo "$DIVIDER"
+	        	echo -e "       Audit Successfully Completed.\n\n"
+			 } | tee -a "audit.log"
+
+		done
+
+		if [[ -f "flag.txt" ]]; then ##Since I am "feeding" the metrics in a log check exit 0 would not work to terminate the whole while loop
+
+			echo "Exiting..."
+			rm flag.txt
+			exit 0
+		fi
 
 	elif [[ $answer == "No" || $answer == "no" ]]; then
+
+		echo "Exiting..."
 		exit 0
 	else
 		echo " Wrong format try again"
 	fi
 
 	done
+
 
 exit 0
