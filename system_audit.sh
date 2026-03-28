@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # =================================================================
 # System Specs Script
@@ -6,6 +6,7 @@
 # Description: It gathers metrics for CPU, RAM, and Disk.
 # =================================================================
 
+clear 
 # Variables
 Date_var=$(date "+%Y-%m-%d %H:%M:%S")
 user=$(whoami)
@@ -13,53 +14,70 @@ user=$(whoami)
 # using a divider to clarify output
 DIVIDER="---------------------------------------------------"
 
-echo "Hello $user"
-read -p "Would you like to learn your system metrics?(Yes/No) " User_choice
+echo -e "Hello $user\n"
 
-if [[ "$User_choice" == "yes" || "$User_choice" == "Yes" ]]; then
 
-	#### Logging the metrics into system_audit.log along with showing them to the screen for the user
-	{
-	echo "$DIVIDER"
-	echo "   SYSTEM AUDIT REPORT - $Date_var "
-	echo -e "$DIVIDER\n"
+while true
+	do
 
-	sleep 0.5
+	read -p "Would you like to learn your system metrics?(Yes/No) " answer
 
-	# 1. RAM Check
-	# 'free -h' to convert to readable form (MB/GB)
-	echo "[*] MEMORY USAGE (RAM):"
-	free -h
-	echo ""
+	if [[ $answer == "Yes" || $answer == "yes" ]];then
 
-	sleep 1
+		echo "What would you like to do? Here are the options:"
+		echo -e "1.uptime\n2.free-h\n3.df -h /\n" 
 
-	# 2. Disk Check
-	# 'df -h /' shows the space in the root partition (Root)
-	echo "[*] DISK SPACE ALLOCATION (Root /):"
-	### (df -h) to be in human readable form with (/) to output info reovlving the root partition
-	df -h /
-	echo ""
+		read user_choice
+	      { #### Logging the metrics into system_audit.log along with showing them to the screen for the user
+       		echo "$DIVIDER"
+        	echo "   SYSTEM AUDIT REPORT - $Date_var "
+        	echo -e "$DIVIDER\n"
 
-	sleep 1
 
-	# 3. CPU LOAD
-	# 'uptime' show the Load Average (1, 5 and 15 minutes ago)
-	echo "[*] CPU LOAD AVERAGE & UPTIME:"
-	uptime
+		case $user_choice in
 
-	echo ""
-	echo "$DIVIDER"
-	echo "       Audit Successfully Completed."
-	} | tee -a "system_audit.log"
+			1)
+			   # 3. CPU LOAD
+        		   # 'uptime' show the Load Average (1, 5 and 15 minutes ago)
+		           echo "[*] CPU LOAD AVERAGE & UPTIME:"
+			   uptime
 
-elif [[ "$User_choice" == "No" || "$User_choice" == "no" ]]; then
+			   sleep 0.5;;
+			2)
+			   # 1. RAM Check
+        		   # 'free -h' to convert to readable form (MB/GB)
+        		   echo "[*] MEMORY USAGE (RAM):"
+        		   free -h
+        		   echo ""
 
-	echo "Goodbye then. Exiting..."
-	sleep 0.5
+			   sleep 1;;
+			3)
+			   # 2. Disk Check
+		           # 'df -h /' shows the space in the root partition (Root)
+        		   echo "[*] DISK SPACE ALLOCATION (Root /):"
+       			   ### (df -h) to be in human readable form with (/) to output info reovlving the root partition
+        		   df -h /
+        		   echo ""
 
-#if the user does not input yes or no by mistake 
-else
-	echo "Wrong answer format try again"
+			   sleep 0.5;;
+			*)
+			   echo "Invalid input"
 
-fi
+		esac
+
+		echo ""
+        	echo "$DIVIDER"
+        	echo "       Audit Successfully Completed."
+
+		} | tee -a "audit.log"
+
+
+	elif [[ $answer == "No" || $answer == "no" ]]; then
+		exit 0
+	else
+		echo " Wrong format try again"
+	fi
+
+	done
+
+exit 0
