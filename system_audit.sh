@@ -8,6 +8,19 @@
 
 clear # Keeping the terminal clean
 
+#Modifying .bashrc file when it is run for the first time so telemetry command is active and can be run with the command telemetry
+
+if ! grep -q "alias telemetry=" ~/.bashrc  ;then
+
+        location="$PWD/system_audit.sh"
+        echo -e "alias telemetry='$location'" >> ~/.bashrc
+	echo "Restarting session"
+	echo "Script can be run via the (telemetry) command."
+	sleep 1
+	first_time=true
+	exec bash
+fi
+
 # Variables:
 
 ## Date_var : Updates with every loop to show the time in the correct format ISO 8601.
@@ -16,7 +29,7 @@ clear # Keeping the terminal clean
 
 session_date_var=$(date "+%Y-%m-%d %H:%M:%S")
 user=$(whoami) 
-
+LOG_FILE="$HOME/linux-telemetry/audit.log"
 
 # using a divider to clarify output
 DIVIDER="---------------------------------------------------"
@@ -31,7 +44,7 @@ while :
 	if [[ $answer == "Yes" || $answer == "yes" ]];then
 
 	        #### Logging the metrics into system_audit.log along with showing them to the screen for the user
-		echo "SESSION STARTED: $session_date_var" | tee -a "audit.log" #Session date that states when the user started the script (future idea of background work and automation)
+		echo "SESSION STARTED: $session_date_var" | tee -a "$LOG_FILE" #Session date that states when the user started the script (future idea of background work and automation)
 
 		while [[ ! -f "flag.txt" ]] #If the file is not created by case 4 since an exit or break would not work.
 			do
@@ -89,7 +102,7 @@ while :
 			echo ""
 	        	echo "$DIVIDER"
 	        	echo -e "       Audit Successfully Completed.\n\n"
-			 } | tee -a "audit.log"
+			 } | tee -a "$LOG_FILE"
 
 		done
 
