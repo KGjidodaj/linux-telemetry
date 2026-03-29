@@ -31,10 +31,48 @@ session_date_var=$(date "+%Y-%m-%d %H:%M:%S")
 user=$(whoami)
 LOG_FILE="$HOME/linux-telemetry/audit.log"
 
+# ==========================================
+# FUNCTIONS
+# ==========================================
+
+check_dependencies() {
+
+	local program=$1 #storing the name into a variable and checking if the program is installed
+	command -v $program
+
+	if [[ $? -ne 0 ]];then
+
+		echo "Dependencies missing!!!"
+		echo "Trying to install iproute2:"
+		sudo apt install iproute2 -y >/dev/null 2>&1 #trying to install the program in the background
+
+		if [[ $? -ne 0 ]];then
+
+			echo "Could not install."
+			echo "Try updating and then installing iproute2"
+			return 1 ##if the program does not exist and could not be installed then an error code is returned to check
+		fi
+	else
+		return 0
+	fi
+}
+
+
+
+
+
+
 # using a divider to clarify output
 DIVIDER="---------------------------------------------------"
 
 echo -e "Hello $user\n"
+
+
+# ==========================================
+# Starting while loop  with the menus
+# ==========================================
+
+
 
 while :
 	do
@@ -50,7 +88,7 @@ while :
 			do
 
 			echo "What would you like to do? Here are the options:"
-	                echo -e "1.CPU Info\n2.Ram Info\n3.Disk Info/\n4.Network Info\n5.Exit\n"
+	                echo -e "1.CPU Info\n2.Ram Info\n3.Disk Info\n4.Network Info\n5.Exit\n"
 
 	                read user_choice
 
@@ -126,10 +164,15 @@ while :
 
 				   sleep 0.5;;
 				4)
+
 				   #Starting with a network summary and then moving onto more detailed metrics
 				 { echo "--------Network-Summary--------"
-				   ss -s
+				   check_dependencies "ss"
+				   if [[ $? -eq 0 ]];then
+					   ss -s
+				   fi
 				   echo -e "--------End-Of-Summary--------\n"
+
 } | tee -a "$LOG_FILE"
 
 				   #4.Information about user's Ip and network basics
@@ -138,12 +181,20 @@ while :
 			  	 { case $Network_choice in
 
 					1)
+
 					   #Using command ip a to show user ip, status and MAC info
-					   ip a;;
+					   check_dependencies "ip"
+					   if [[ $? -eq 0 ]];then
+					   	ip a
+					   fi ;;
 
 					2)
+
 					   #Using command -tulpn flag to show active service ports and listening processes
-					   ss -tulpn;;
+					   check_dependencies "ss"
+					   if [[ $? -eq 0 ]];then
+					   	ss -tulpn
+					   fi ;;
 
 					*)
 					   echo -e "Invalid Input\n";;
