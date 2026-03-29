@@ -28,7 +28,7 @@ fi
 ## user_choice : Checks user choice for the case statement.
 
 session_date_var=$(date "+%Y-%m-%d %H:%M:%S")
-user=$(whoami) 
+user=$(whoami)
 LOG_FILE="$HOME/linux-telemetry/audit.log"
 
 # using a divider to clarify output
@@ -50,7 +50,7 @@ while :
 			do
 
 			echo "What would you like to do? Here are the options:"
-	                echo -e "1.uptime\n2.free-h\n3.df -h /\n4.Exit\n"
+	                echo -e "1.CPU Info\n2.Ram Info\n3.Disk Info/\n4.Network Info\n5.Exit\n"
 
 	                read user_choice
 
@@ -59,41 +59,95 @@ while :
 	        	Date_var=$(date "+%Y-%m-%d %H:%M:%S")
 			echo "   SYSTEM AUDIT REPORT - $Date_var "
 	        	echo  "$DIVIDER"
-
+			sleep 0.5
 
 			case $user_choice in
 
 				1)
-				   # 3. CPU LOAD
+				   # 1. CPU LOAD
 	        		   # 'uptime' show the Load Average (1, 5 and 15 minutes ago)
 			           echo "[*] CPU LOAD AVERAGE & UPTIME:"
-				   uptime
-
-				   sleep 0.5;;
+				   uptime;;
 				2)
-				   # 1. RAM Check
+				   # 2. RAM Check
 	        		   # 'free -h' to convert to readable form (MB/GB)
 	        		   echo "[*] MEMORY USAGE (RAM):"
 	        		   free -h
 	        		   echo ""
 
-				   sleep 1;;
+				   sleep 0.5;;
 				3)
-				   # 2. Disk Check
-			           # 'df -h /' shows the space in the root partition (Root)
-	        		   echo "[*] DISK SPACE ALLOCATION (Root /):"
-	       			   ### (df -h) to be in human readable form with (/) to output info reovlving the root partition
-	        		   df -h /
-	        		   echo ""
+				   # 3. Disk Check
+				   # 'df' = free disk and 'du' = disk usage
+				   # '-h' = human readable form  (MG/GB)
+			           # '/' = root partition (Root) and '.' = working directory
+
+                                   read -p "Would you like to check about root partition or current directory?(1/2): " disk_space
+                                   case $disk_space in
+                                        1)
+
+					   read -p "Would you like to learn about disk usage or free disc space?(du/df): " command
+					   echo ""
+
+					   if [[ $command == "df" ]];then
+						df -h /
+					   elif [[ $command == "du" ]];then
+						du -h / --max-depth=1 2>/dev/null
+					   else
+						echo "Invalid answer!"
+					   fi
+
+					   echo -e "\n[*] DISK SPACE ALLOCATION (Root /):"
+	                                   echo ""
+
+					   sleep 0.5;;
+
+					2)
+
+					   read -p "Would you like to learn about disk usage or free disc space?(du/df): " command
+                                           echo ""
+
+                                           if [[ $command == "df" ]];then
+                                                df -h .
+                                           elif [[ $command == "du" ]];then
+                                                du -h . --max-depth=1 2>/dev/null
+                                           else
+                                                echo "Invalid answer!"
+                                           fi
+
+					   echo -e "\n[*] DISK SPACE ALLOCATION (Working Direcroty .):"
+	                                   echo ""
+
+                                           sleep 0.5;;
+				   esac
 
 				   sleep 0.5;;
 				4)
-				   #3. Quit choice
+				   #4.Information about users Ip and network basics
+				   echo "Would you like to learn about your Network Interface Configuration or Socket Statistics?(1/2)"
+				   read -p "" Network_choice
+			  	   case $Network_choice in
+
+					1)
+					   #Using command ip a to show user ip, status and mac info
+					   ip a;;
+
+					2)
+					   #Using command -tulpn flag to show active service ports an listening processes
+					   ss -tulpn;;
+
+					*)
+					   echo -e "Invalid Input\n";;
+  				   esac
+
+				   ;;
+				5)
+				   #5. Quit choice
 				   touch flag.txt
 				   echo -e "          	 USER: $user EXITED\n "
 
 
-				   sleep 0.5;;
+				   exit 0;;
 				*)
 				   echo "Invalid input";;
 
