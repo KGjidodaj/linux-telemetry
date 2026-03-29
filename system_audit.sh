@@ -29,7 +29,7 @@ fi
 
 session_date_var=$(date "+%Y-%m-%d %H:%M:%S")
 user=$(whoami)
-sudo mkdir -p "$HOME/linux-telemetry" >/dev/null 2>&1 # in case someone does not already have the directory ready to avoid variable LOG_FILE errors
+mkdir -p "$HOME/linux-telemetry" >/dev/null 2>&1 # in case someone does not already have the directory ready to avoid variable LOG_FILE errors
 LOG_FILE="$HOME/linux-telemetry/audit.log"
 
 # ==========================================
@@ -39,7 +39,7 @@ LOG_FILE="$HOME/linux-telemetry/audit.log"
 check_dependencies() {
 
 	local program=$1 #storing the name into a variable and checking if the program is installed
-	command -v $program
+	command -v $program > /dev/null 2>&1
 
 	if [[ $? -ne 0 ]];then
 
