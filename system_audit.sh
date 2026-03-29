@@ -29,6 +29,7 @@ fi
 
 session_date_var=$(date "+%Y-%m-%d %H:%M:%S")
 user=$(whoami)
+sudo mkdir -p "$HOME/linux-telemetry" >/dev/null 2>&1 # in case someone does not already have the directory ready to avoid variable LOG_FILE errors
 LOG_FILE="$HOME/linux-telemetry/audit.log"
 
 # ==========================================

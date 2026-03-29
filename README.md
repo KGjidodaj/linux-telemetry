@@ -10,6 +10,15 @@ Instead of manually typing individual Linux diagnostic commands, this script wra
 
 To ensure maximum usability, this script includes a **Self-Installing Global Alias mechanism** by modifying the ~/.bashrc file.
 
+## Advanced Features (system_audit.sh)
+- **Dependency Auto-Remediation:** The script automatically checks for missing networking packages (like `iproute2`) and attempts to install them without crashing.
+- **Subshell UX Handling:** Input prompts (`read`) are safely extracted from logging pipes to prevent random (terminal freezing) glitches and ensure a smooth User Experience.
+
+## Testing & Environment Certification
+To ensure maximum portability and zero host-system corruption during dependency auto-remediation, the `system_audit.sh` utility was also tested inside isolated **Docker Containers** running minimal Ubuntu environments.
+This guarantees it can be safely deployed on any bare-metal server or headless container.
+
+
 **Step 1: Download & Initialization (First Run)**
 Clone the repository to your local machine, navigate into the directory, and execute the script directly to initialize the installation:
 ```bash
