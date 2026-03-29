@@ -60,19 +60,20 @@ while :
 			echo "   SYSTEM AUDIT REPORT - $Date_var "
 	        	echo  "$DIVIDER"
 			sleep 0.5
+} | tee -a "$LOG_FILE"
 
 			case $user_choice in
 
 				1)
 				   # 1. CPU LOAD
 	        		   # 'uptime' show the Load Average (1, 5 and 15 minutes ago)
-			           echo "[*] CPU LOAD AVERAGE & UPTIME:"
-				   uptime;;
+			           echo "[*] CPU LOAD AVERAGE & UPTIME:" | tee -a "$LOG_FILE"
+				   uptime | tee -a "$LOG_FILE" ;;
 				2)
 				   # 2. RAM Check
 	        		   # 'free -h' to convert to readable form (MB/GB)
-	        		   echo "[*] MEMORY USAGE (RAM):"
-	        		   free -h
+	        		   echo "[*] MEMORY USAGE (RAM):" | tee -a "$LOG_FILE"
+	        		   free -h | tee -a "$LOG_FILE"
 	        		   echo ""
 
 				   sleep 0.5;;
@@ -87,7 +88,7 @@ while :
                                         1)
 
 					   read -p "Would you like to learn about disk usage or free disc space?(du/df): " command
-					   echo ""
+					{  echo ""
 
 					   if [[ $command == "df" ]];then
 						df -h /
@@ -99,13 +100,14 @@ while :
 
 					   echo -e "\n[*] DISK SPACE ALLOCATION (Root /):"
 	                                   echo ""
+} | tee -a "$LOG_FILE"
 
-					   sleep 0.5;;
+					   sleep 0.5 ;;
 
 					2)
 
 					   read -p "Would you like to learn about disk usage or free disc space?(du/df): " command
-                                           echo ""
+                                        {  echo ""
 
                                            if [[ $command == "df" ]];then
                                                 df -h .
@@ -117,46 +119,51 @@ while :
 
 					   echo -e "\n[*] DISK SPACE ALLOCATION (Working Direcroty .):"
 	                                   echo ""
+} | tee -a "$LOG_FILE"
 
                                            sleep 0.5;;
 				   esac
 
 				   sleep 0.5;;
 				4)
-				   #4.Information about users Ip and network basics
+				   #Starting with a network summary and then moving onto more detailed metrics
+				 { echo "--------Network-Summary--------"
+				   ss -s
+				   echo -e "--------End-Of-Summary--------\n"
+} | tee -a "$LOG_FILE"
+
+				   #4.Information about user's Ip and network basics
 				   echo "Would you like to learn about your Network Interface Configuration or Socket Statistics?(1/2)"
 				   read -p "" Network_choice
-			  	   case $Network_choice in
+			  	 { case $Network_choice in
 
 					1)
-					   #Using command ip a to show user ip, status and mac info
+					   #Using command ip a to show user ip, status and MAC info
 					   ip a;;
 
 					2)
-					   #Using command -tulpn flag to show active service ports an listening processes
+					   #Using command -tulpn flag to show active service ports and listening processes
 					   ss -tulpn;;
 
 					*)
 					   echo -e "Invalid Input\n";;
   				   esac
+} | tee -a "$LOG_FILE" ;;
 
-				   ;;
-				5)
+			        5)
 				   #5. Quit choice
 				   touch flag.txt
-				   echo -e "          	 USER: $user EXITED\n "
+				   echo -e "          	 USER: $user EXITED\n " | tee -a "$LOG_FILE" ;;
 
-
-				   exit 0;;
 				*)
-				   echo "Invalid input";;
+				   echo "Invalid input"  | tee -a "$LOG_FILE" ;;
 
 			esac
-
+			{
 			echo ""
 	        	echo "$DIVIDER"
 	        	echo -e "       Audit Successfully Completed.\n\n"
-			 } | tee -a "$LOG_FILE"
+}| tee -a "$LOG_FILE"
 
 		done
 
