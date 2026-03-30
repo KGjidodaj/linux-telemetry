@@ -14,11 +14,11 @@ location=$(find $HOME -name "system_audit.sh") #reached some scenarios with dire
 if ! grep -q "alias telemetry=" ~/.bashrc  ;then
 
         echo -e "alias telemetry='$location'" >> ~/.bashrc
-	echo "Restarting session"
-	echo "Script can be run via the (telemetry) command."
-	sleep 1
-	first_time=true
-	exec bash
+        echo "Restarting session"
+        echo "Script can be run via the (telemetry) command."
+        sleep 1
+        first_time=true
+        exec bash
 fi
 
 # Variables:
@@ -45,9 +45,9 @@ LOG_FILE="$HOME/linux-telemetry/audit.log"
 ### Checking for sudo dependecies according to user :
 
 if command -v "sudo" > /dev/null 2>&1 ;then
-	sudo_cmd="sudo"
+        sudo_cmd="sudo"
 else
-	sudo_cmd=""
+        sudo_cmd=""
 
 fi
 
@@ -61,29 +61,33 @@ fi
 
 check_dependencies() {
 
-	local program=$1 #storing the name into a variable and checking if the program is installed
-	command -v $program > /dev/null 2>&1
+        local program=$1 #storing the name into a variable and checking if the program is installed
+        command -v $program > /dev/null 2>&1
 
-	if [[ $? -ne 0 ]];then
+        if [[ $? -ne 0 ]];then
 
-		echo "Dependencies missing!!!"
-		echo "Trying to install iproute2:"
-		echo "Might update first and take some time"
-		clear
+                echo "Dependencies missing!!!"
+                echo "Trying to install iproute2:"
+                echo "Might update first and take some time"
+                clear
 
-		$sudo_cmd apt update >/dev/null 2>&1 #updating in case machine has not been updated
-		$sudo_cmd apt install iproute2 -y >/dev/null 2>&1 #trying to install the program in the background
+                $sudo_cmd apt update >/dev/null 2>&1 #updating in case machine has not been updated
+                $sudo_cmd apt install iproute2 -y >/dev/null 2>&1 #trying to install the program in the background
 
-		if [[ $? -ne 0 ]];then
+                if [[ $? -ne 0 ]];then
 
-			echo "Could not install."
-			echo "Try updating and then installing iproute2"
-			return 1 ##if the program does not exist and could not be installed then an error code is returned to check
-		fi
-	else
-		return 0
-	fi
+                        echo "Could not install."
+                        echo "Try updating and then installing iproute2"
+                        return 1 ##if the program does not exist and could not be installed then an error code is returned to check
+                fi
+        else
+                return 0
+        fi
 }
+
+
+
+
 
 
 
@@ -103,165 +107,172 @@ echo -e "Hello $user\n"
 
 
 while :
-	do
+        do
 
-	read -p "Would you like to learn your system metrics?(Yes/No) " answer
+        echo "What would you like to do"
+        echo -e "1.system-telemetrics (check info about cpu/ram/disk/network)\n2.security-forensics (check possible security breach)\n3.active remediation (check what is causing the system to crash and resolve it)\n4.Exit\n"
+        read answer
 
-	if [[ $answer == "Yes" || $answer == "yes" ]];then
+        case $answer in
 
-	        #### Logging the metrics into system_audit.log along with showing them to the screen for the user
-		echo "SESSION STARTED: $session_date_var" | tee -a "$LOG_FILE" #Session date that states when the user started the script (future idea of background work and automation)
+                1)
+                        #### Logging the metrics into system_audit.log along with showing them to the screen for the user
+                        echo "SESSION STARTED: $session_date_var" | tee -a "$LOG_FILE" #Session date that states when the user started the script (future idea of background work and automation)
 
-		while [[ ! -f "flag.txt" ]] #If the file is not created by case 4 since an exit or break would not work.
-			do
+                        while :
+                                do
 
-			echo "What would you like to do? Here are the options:"
-	                echo -e "1.CPU Info\n2.Ram Info\n3.Disk Info\n4.Network Info\n5.Exit\n"
+                                echo "What would you like to do? Here are the options:"
+                                echo -e "1.CPU Info\n2.Ram Info\n3.Disk Info\n4.Network Info\n5.Exit\n"
 
-	                read user_choice
+                                read user_choice
 
 
-	       	      { echo "$DIVIDER"
-	        	Date_var=$(date "+%Y-%m-%d %H:%M:%S")
-			echo "   SYSTEM AUDIT REPORT - $Date_var "
-	        	echo  "$DIVIDER"
-			sleep 0.5
-} | tee -a "$LOG_FILE"
+                              { echo "$DIVIDER"
+                                Date_var=$(date "+%Y-%m-%d %H:%M:%S")
+                                echo "   SYSTEM AUDIT REPORT - $Date_var "
+                                echo  "$DIVIDER"
+                                sleep 0.5
+        } | tee -a "$LOG_FILE"
 
-			case $user_choice in
+                                case $user_choice in
 
-				1)
-				   # 1. CPU LOAD
-	        		   # 'uptime' show the Load Average (1, 5 and 15 minutes ago)
-			           echo "[*] CPU LOAD AVERAGE & UPTIME:" | tee -a "$LOG_FILE"
-				   uptime | tee -a "$LOG_FILE" ;;
-				2)
-				   # 2. RAM Check
-	        		   # 'free -h' to convert to readable form (MB/GB)
-	        		   echo "[*] MEMORY USAGE (RAM):" | tee -a "$LOG_FILE"
-	        		   free -h | tee -a "$LOG_FILE"
-	        		   echo ""
-
-				   sleep 0.5;;
-				3)
-				   # 3. Disk Check
-				   # 'df' = free disk and 'du' = disk usage
-				   # '-h' = human readable form  (MG/GB)
-			           # '/' = root partition (Root) and '.' = working directory
-
-                                   read -p "Would you like to check about root partition or current directory?(1/2): " disk_space
-                                   case $disk_space in
                                         1)
-
-					   read -p "Would you like to learn about disk usage or free disc space?(du/df): " command
-					{  echo ""
-
-					   if [[ $command == "df" ]];then
-						df -h /
-					   elif [[ $command == "du" ]];then
-						du -h / --max-depth=1 2>/dev/null
-					   else
-						echo "Invalid answer!"
-					   fi
-
-					   echo -e "\n[*] DISK SPACE ALLOCATION (Root /):"
-	                                   echo ""
-} | tee -a "$LOG_FILE"
-
-					   sleep 0.5 ;;
-
-					2)
-
-					   read -p "Would you like to learn about disk usage or free disc space?(du/df): " command
-                                        {  echo ""
-
-                                           if [[ $command == "df" ]];then
-                                                df -h .
-                                           elif [[ $command == "du" ]];then
-                                                du -h . --max-depth=1 2>/dev/null
-                                           else
-                                                echo "Invalid answer!"
-                                           fi
-
-					   echo -e "\n[*] DISK SPACE ALLOCATION (Working Direcroty .):"
-	                                   echo ""
-} | tee -a "$LOG_FILE"
+                                           # 1. CPU LOAD
+                                           # 'uptime' show the Load Average (1, 5 and 15 minutes ago)
+                                           echo "[*] CPU LOAD AVERAGE & UPTIME:" | tee -a "$LOG_FILE"
+                                           uptime | tee -a "$LOG_FILE" ;;
+                                        2)
+                                           # 2. RAM Check
+                                           # 'free -h' to convert to readable form (MB/GB)
+                                           echo "[*] MEMORY USAGE (RAM):" | tee -a "$LOG_FILE"
+                                           free -h | tee -a "$LOG_FILE"
+                                           echo ""
 
                                            sleep 0.5;;
-				   esac
+                                        3)
+                                           # 3. Disk Check
+                                           # 'df' = free disk and 'du' = disk usage
+                                           # '-h' = human readable form  (MG/GB)
+                                           # '/' = root partition (Root) and '.' = working directory
 
-				   sleep 0.5;;
-				4)
+                                           read -p "Would you like to check about root partition or current directory?(1/2): " disk_space
+                                           case $disk_space in
+                                                1)
 
-				   #Starting with a network summary and then moving onto more detailed metrics
-				 { echo "--------Network-Summary--------"
-				   check_dependencies "ss,"
-				   if [[ $? -eq 0 ]];then
-					   ss -s
-				   fi
-				   echo -e "--------End-Of-Summary--------\n"
+                                                   read -p "Would you like to learn about disk usage or free disc space?(du/df): " command
+                                                {  echo ""
 
-} | tee -a "$LOG_FILE"
+                                                   if [[ $command == "df" ]];then
+                                                        df -h /
+                                                   elif [[ $command == "du" ]];then
+                                                        du -h / --max-depth=1 2>/dev/null
+                                                   else
+                                                        echo "Invalid answer!"
+                                                   fi
 
-				   #4.Information about user's Ip and network basics
-				   echo "Would you like to learn about your Network Interface Configuration or Socket Statistics?(1/2)"
-				   read -p "" Network_choice
-			  	 { case $Network_choice in
+                                                   echo -e "\n[*] DISK SPACE ALLOCATION (Root /):"
+                                                   echo ""
+        } | tee -a "$LOG_FILE"
 
-					1)
+                                                   sleep 0.5 ;;
 
-					   #Using command ip a to show user ip, status and MAC info
-					   check_dependencies "ip"
-					   if [[ $? -eq 0 ]];then
-					   	ip a
-					   fi ;;
+                                                2)
 
-					2)
+                                                   read -p "Would you like to learn about disk usage or free disc space?(du/df): " command
+                                                {  echo ""
 
-					   #Using command -tulpn flag to show active service ports and listening processes
-					   check_dependencies "ss"
-					   if [[ $? -eq 0 ]];then
-					   	ss -tulpn
-					   fi ;;
+                                                   if [[ $command == "df" ]];then
+                                                        df -h .
+                                                   elif [[ $command == "du" ]];then
+                                                        du -h . --max-depth=1 2>/dev/null
+                                                   else
+                                                        echo "Invalid answer!"
+                                                   fi
 
-					*)
-					   echo -e "Invalid Input\n";;
-  				   esac
-} | tee -a "$LOG_FILE" ;;
+                                                   echo -e "\n[*] DISK SPACE ALLOCATION (Working Direcroty .):"
+                                                   echo ""
+        } | tee -a "$LOG_FILE"
 
-			        5)
-				   #5. Quit choice
-				   touch flag.txt
-				   echo -e "          	 USER: $user EXITED\n " | tee -a "$LOG_FILE" ;;
+                                                   sleep 0.5;;
+                                           esac
 
-				*)
-				   echo "Invalid input"  | tee -a "$LOG_FILE" ;;
+                                           sleep 0.5;;
+                                        4)
 
-			esac
-			{
-			echo ""
-	        	echo "$DIVIDER"
-	        	echo -e "       Audit Successfully Completed.\n\n"
-}| tee -a "$LOG_FILE"
+                                           #Starting with a network summary and then moving onto more detailed metrics
+                                         { echo "--------Network-Summary--------"
+                                           check_dependencies "ss,"
+                                           if [[ $? -eq 0 ]];then
+                                                   ss -s
+                                           fi
+                                           echo -e "--------End-Of-Summary--------\n"
 
-		done
+        } | tee -a "$LOG_FILE"
 
-		if [[ -f "flag.txt" ]]; then ##Since I am "feeding" the metrics in a log check exit 0 would not work to terminate the whole while loop
+                                           #4.Information about user's Ip and network basics
+                                           echo "Would you like to learn about your Network Interface Configuration or Socket Statistics?(1/2)"
+                                           read -p "" Network_choice
+                                         { case $Network_choice in
 
-			echo "Exiting..."
-			rm flag.txt
-			exit 0
-		fi
+                                                1)
 
-	elif [[ $answer == "No" || $answer == "no" ]]; then
+                                                   #Using command ip a to show user ip, status and MAC info
+                                                   check_dependencies "ip"
+                                                   if [[ $? -eq 0 ]];then
+                                                        ip a
+                                                   fi ;;
 
-		echo "Exiting..."
-		exit 0
-	else
-		echo " Wrong format try again"
-	fi
+                                                2)
 
-	done
+                                                   #Using command -tulpn flag to show active service ports and listening processes
+                                                   check_dependencies "ss"
+                                                   if [[ $? -eq 0 ]];then
+                                                        ss -tulpn
+                                                   fi ;;
 
+                                                *)
+                                                   echo -e "Invalid Input\n";;
+                                           esac
+        } | tee -a "$LOG_FILE" ;;
 
+                                        5)
+                                           #5. Quit choice
+                                           echo -e "             USER: $user EXITED\n " | tee -a "$LOG_FILE" 
+                                           break ;;
+
+                                        *)
+                                           echo "Invalid input"  | tee -a "$LOG_FILE" ;;
+
+                                esac
+                                {
+                                echo ""
+                                echo "$DIVIDER"
+                                echo -e "       Audit Successfully Completed.\n\n"
+        }| tee -a "$LOG_FILE"
+
+                        done
+
+                        if [[ -f "flag.txt" ]]; then ##Since I am "feeding" the metrics in a log check exit 0 would not work to terminate the whole while loop
+
+                                echo "Exiting..."
+                                rm flag.txt
+                                exit 0
+                        fi ;;
+                2)
+                        echo "choice 2";;
+
+                3)
+                        echo "choice 3";;
+                4)
+                        echo "choice 4 to exit"
+                        exit 0 ;;
+
+                *)
+                        echo "default choice invalid info";;
+
+        esac
+
+done
 exit 0
+
