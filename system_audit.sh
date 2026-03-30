@@ -7,12 +7,12 @@
 # =================================================================
 
 clear # Keeping the terminal clean
+location=$(find $HOME -name "system_audit.sh") #reached some scenarios with directory errors so saving location
 
 #Modifying .bashrc file when it is run for the first time so telemetry command is active and can be run with the command telemetry
 
 if ! grep -q "alias telemetry=" ~/.bashrc  ;then
 
-        location="$PWD/system_audit.sh"
         echo -e "alias telemetry='$location'" >> ~/.bashrc
 	echo "Restarting session"
 	echo "Script can be run via the (telemetry) command."
@@ -23,14 +23,37 @@ fi
 
 # Variables:
 
-## Date_var : Updates with every loop to show the time in the correct format ISO 8601.
+## Date_var - session_date_var : Updates with every loop to show the time in the correct format ISO 8601.
 ## answer : Checks user answer in the first read.
 ## user_choice : Checks user choice for the case statement.
+## user : checking who the user is when running the script
+## LOG_FILE : a specific directory for the audit.log file to be created and updated
 
 session_date_var=$(date "+%Y-%m-%d %H:%M:%S")
 user=$(whoami)
-mkdir -p "$HOME/linux-telemetry" >/dev/null 2>&1 # in case someone does not already have the directory ready to avoid variable LOG_FILE errors
+
+### checking if linux-telemetry directory exists in case user copied file (e.g. to a docker container) without the directory
+directory_location=$(find $HOME -name linux-telemetry)
+
+if [[ directory_location="" ]];then
+        mkdir -p "$HOME/linux-telemetry" >/dev/null 2>&1 # in case someone does not already have the directory ready to avoid variable LOG_FILE errors
+fi
+
+
 LOG_FILE="$HOME/linux-telemetry/audit.log"
+
+### Checking for sudo dependecies according to user :
+
+if command -v "sudo" > /dev/null 2>&1 ;then
+	sudo_cmd="sudo"
+else
+	sudo_cmd=""
+
+fi
+
+
+
+
 
 # ==========================================
 # FUNCTIONS
@@ -45,7 +68,11 @@ check_dependencies() {
 
 		echo "Dependencies missing!!!"
 		echo "Trying to install iproute2:"
-		sudo apt install iproute2 -y >/dev/null 2>&1 #trying to install the program in the background
+		echo "Might update first and take some time"
+		clear
+
+		$sudo_cmd apt update >/dev/null 2>&1 #updating in case machine has not been updated
+		$sudo_cmd apt install iproute2 -y >/dev/null 2>&1 #trying to install the program in the background
 
 		if [[ $? -ne 0 ]];then
 
@@ -168,7 +195,7 @@ while :
 
 				   #Starting with a network summary and then moving onto more detailed metrics
 				 { echo "--------Network-Summary--------"
-				   check_dependencies "ss"
+				   check_dependencies "ss,"
 				   if [[ $? -eq 0 ]];then
 					   ss -s
 				   fi
