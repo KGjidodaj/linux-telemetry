@@ -112,12 +112,17 @@ while :
         echo "What would you like to do"
         echo -e "1.system-telemetrics (check info about cpu/ram/disk/network)\n2.security-forensics (check possible security breach)\n3.active remediation (check what is causing the system to crash and resolve it)\n4.Exit\n"
         read answer
+        clear
+
+        { echo "$DIVIDER"
+        echo -e "[SESSION STARTED: $session_date_var]"  #Session date that states when the user started the script
+        echo "$DIVIDER"
+} | tee -a "$LOG_FILE"
 
         case $answer in
 
                 1)
                         #### Logging the metrics into system_audit.log along with showing them to the screen for the user
-                        echo "SESSION STARTED: $session_date_var" | tee -a "$LOG_FILE" #Session date that states when the user started the script (future idea of background work and automation)
 
                         while :
                                 do
@@ -125,7 +130,7 @@ while :
                                 echo "What would you like to do? Here are the options:"
                                 echo -e "1.CPU Info\n2.Ram Info\n3.Disk Info\n4.Network Info\n5.Exit\n"
 
-                                read user_choice
+                                read user_choice1
 
 
                               { echo "$DIVIDER"
@@ -135,7 +140,7 @@ while :
                                 sleep 0.5
         } | tee -a "$LOG_FILE"
 
-                                case $user_choice in
+                                case $user_choice1 in
 
                                         1)
                                            # 1. CPU LOAD
@@ -211,7 +216,7 @@ while :
         } | tee -a "$LOG_FILE"
 
                                            #4.Information about user's Ip and network basics
-                                           echo "Would you like to learn about your Network Interface Configuration or Socket Statistics?(1/2)"
+                                           echo "Would you like to also learn about your Network Interface Configuration or Socket Statistics?(1/2)"
                                            read -p "" Network_choice
                                          { case $Network_choice in
 
@@ -249,30 +254,106 @@ while :
                                 echo ""
                                 echo "$DIVIDER"
                                 echo -e "       Audit Successfully Completed.\n\n"
-        }| tee -a "$LOG_FILE"
+        } | tee -a "$LOG_FILE"
 
-                        done
+                        done ;;
 
-                        if [[ -f "flag.txt" ]]; then ##Since I am "feeding" the metrics in a log check exit 0 would not work to terminate the whole while loop
-
-                                echo "Exiting..."
-                                rm flag.txt
-                                exit 0
-                        fi ;;
                 2)
-                        echo "choice 2";;
+                        while :
+                                do
+
+                                echo "What would you like to check?"
+                                echo -e "1.Who is connected\n2.The command history\n3.Check of potential ssh attempts\n4.Files changed\n5.Kernel Logs\n6.Exit\n"
+                                read user_choice2
+
+                                case $user_choice2 in
+
+                                        1)
+
+                                                # looking who is connected  with the w command
+                                                { echo -e "\n$DIVIDER                       [Active Users]:                       $DIVIDER\n"
+
+                                                if command -v w >/dev/null 2>&1 ;then
+                                                        w
+                                                else
+                                                        echo "Cannot check active users"
+                                                fi
+                } | tee -a "$LOG_FILE" ;;
+
+                                        2)
+
+                                                # checking .bash_history for any suspicious activity
+                                                { echo -e "\n$DIVIDER                       [History]:                       $DIVIDER\n"
+
+                                                echo -e " Here is the bash_history \n"
+                                                cat ~/.bash_history 2> /dev/null | tail -n 100
+                } | tee -a "$LOG_FILE" ;;
+
+                                        3)
+
+                                                echo -e "\n$DIVIDER                       [Log Attempts]:                       $DIVIDER\n" | tee -a "$LOG_FILE"
+
+                                                if command -v journalctl>/dev/null 2>&1 ;then
+
+                                                        echo "Add date from to search from in date format (e.g. 2026-03-30 21:00:00) or string format (e.g. 5 hours ago )"
+                                                        read search_date
+                                                        $sudo_cmd journalctl --since "$search_date" | tee -a "$LOG_FILE"
+
+                                                elif [[ -f /var/log/auth.log ]];then
+
+                                                        $sudo_cmd grep "Accepted" /var/log/auth.log | tee -a "$LOG_FILE"
+                                                else
+                                                        echo "Could not check logs" || tee -a "$LOG_FILE"
+                                                fi ;;
+                                        4)
+
+                                                { echo -e "\n$DIVIDER                       [Tampered Files]:                       $DIVIDER\n"
+                                                $sudo_cmd find / -mmin -60 -type f
+                } | tee -a "$LOG_FILE" ;;
+
+
+                                        5)
+
+                                                { echo -e "$DIVIDER\n                       [Kernel Logs]:                       $DIVIDER\n"
+                                                if dmesg -T | tail -n 50 >/dev/null 2>&1;then
+                                                        $sudo_cmd dmesg -T | tail -n 50
+                                                else
+                                                        echo "Error: If in docker try running in privilaged mode"
+                                                fi
+                } | tee -a "$LOG_FILE" ;;
+
+                                        6)
+
+                                                echo "Exiting..." | tee -a "$LOG_FILE"
+                                                break ;;
+                                        *)
+
+                                                echo "Invalid Input" ;;
+
+                                esac
+                                        echo "                  [END OF ACTIVITY]                            "
+                                        echo -e "$DIVIDER\n"
+                                done ;;
 
                 3)
-                        echo "choice 3";;
+                        echo "choice 3" ;;
+
+
+
+
+
+
+
+
+
+
                 4)
                         echo "choice 4 to exit"
                         exit 0 ;;
 
                 *)
-                        echo "default choice invalid info";;
+                        echo "default choice invalid info" ;;
 
-        esac
-
-done
+                esac
+        done
 exit 0
-
