@@ -6,6 +6,27 @@
 # Description: It gathers metrics for CPU, RAM, and Disk.
 # =================================================================
 
+
+## Seperating docker containers
+if [[ -f /.dockerenv ]];then
+        machine="Docker"
+else
+        machine="NDocker"
+fi
+
+
+## Seperating os-releases if they are not compatible.
+
+if grep -q "ID_LIKE=debian" /etc/os-release ;then
+        OS="Deb"
+else
+        echo -e "Sorry but only Debian compatability exists (at least for now).\nExiting"
+        exit 0
+fi
+
+
+
+
 clear # Keeping the terminal clean
 location=$(find $HOME -name "system_audit.sh") #reached some scenarios with directory errors so saving location
 
@@ -216,7 +237,7 @@ while :
         } | tee -a "$LOG_FILE"
 
                                            #4.Information about user's Ip and network basics
-                                           echo "Would you like to also learn about your Network Interface Configuration or Socket Statistics?(1/2)"
+                                           echo "Would you like to learn about your Network Interface Configuration or Socket Statistics?(1/2)"
                                            read -p "" Network_choice
                                          { case $Network_choice in
 
@@ -263,7 +284,7 @@ while :
                                 do
 
                                 echo "What would you like to check?"
-                                echo -e "1.Who is connected\n2.The command history\n3.Check of potential ssh attempts\n4.Files changed\n5.Kernel Logs\n6.Exit\n"
+                                echo -e "1.Who is connected\n2.The command history\n3.Check of potential ssh attempts\n4.Files changed\n5.Kernel Logs\n6.socket statistics\n7.Exit\n"
                                 read user_choice2
 
                                 case $user_choice2 in
@@ -303,12 +324,13 @@ while :
 
                                                         $sudo_cmd grep "Accepted" /var/log/auth.log | tee -a "$LOG_FILE"
                                                 else
-                                                        echo "Could not check logs" || tee -a "$LOG_FILE"
+                                                        echo "Could not check logs" | tee -a "$LOG_FILE"
                                                 fi ;;
                                         4)
 
-                                                { echo -e "\n$DIVIDER                       [Tampered Files]:                       $DIVIDER\n"
-                                                $sudo_cmd find / -mmin -60 -type f
+                                                { echo -e "$DIVIDER\n                       [Tampered Files]:                       $DIVIDER\n"
+                                                #using -not -path to avoid some paths that could overwhelm the user and fill up the screen
+                                                $sudo_cmd find / -mmin -60 -type f -not -path "/proc/*" -not -path "/sys/*" -not -path "/run/*" -not -path "/dev/*" -not -path "/var/lib/docker/*" 2>/dev/null
                 } | tee -a "$LOG_FILE" ;;
 
 
@@ -322,7 +344,19 @@ while :
                                                 fi
                 } | tee -a "$LOG_FILE" ;;
 
+
                                         6)
+
+                                                check_dependencies "ss"
+
+                                                { echo "$DIVIDER$DIVIDER"
+                                                echo "Checking socket statistics..."
+                                                echo "$DIVIDER$DIVIDER"
+
+                                                ss -tulpan
+                } | tee -a "$LOG_FILE" ;;
+
+                                        7)
 
                                                 echo "Exiting..." | tee -a "$LOG_FILE"
                                                 break ;;
@@ -331,28 +365,88 @@ while :
                                                 echo "Invalid Input" ;;
 
                                 esac
-                                        echo "                  [END OF ACTIVITY]                            "
-                                        echo -e "$DIVIDER\n"
+                                        echo "                                    [END OF ACTIVITY]                                              "
+                                        echo -e "$DIVIDER$DIVIDER\n"
                                 done ;;
 
                 3)
-                        echo "choice 3" ;;
+                        while :
+                                do
+                                echo -e "Would you like to check option 3? (yes/no)\n"
+                                read answer3
+
+                                if [[ "$answer3" == "Yes" || "$answer3" == "yes" ]];then
+
+                                        echo "$DIVIDER$DIVIDER"
+                                        echo "Here is a list of processes that could be the cause of system slowdown"
+                                        echo "$DIVIDER$DIVIDER"
+
+                                        # -b in batch mode, -n 1 for there to only be one iteration and head to limit the output
+                                        top -b -n 1 | head -n 25
+
+                                        echo "What PID  would you like to terminate? (To skip press enter): "
+                                        read PID_tokill
+
+                                        if  [[ $PID_tokill == "" ]];then
+                                                echo "Skipping..."
+                                        else
+                                                $sudo_cmd kill "$PID_tokill" > /dev/null 2>&1
+                                                if [[ $? -ne 0 ]];then
+
+                                                        $sudo_cmd kill -9 "$PID_tokill" > /dev/null 2>&1
+
+                                                                if [[ $? -ne 0 ]];then
+                                                                        echo "Could not kill process"
+                                                                else
+                                                                        echo "Killed process successesfully"
+                                                                fi
+                                                else
+                                                        echo "Killed process successesfully"
+                                                fi
+
+                                                if [[ $machine == "Docker" ]];then
+                                                        echo "stopping here for dockers"
+                                                else
+                                                        read -p "Would you like to restart the process?(yes/no): " restart
+                                                        if [[ $restart == "y" || $restart == "yes" ]];then
+
+                                                                echo ""
+                                                                echo "(You can find <service_name> by running systemctl status PID)"
+                                                                read -p "Add <service_name> you want to restart:  " service_name
+                                                                $sudo_cmd systemctl restart $service_name
+                                                        fi
+
+                                                        echo "(You can find <service_name> by running systemctl status PID)"
+                                                        echo -e "Would you like to check the logs of the processes? Input <service_name>: \n"
+                                                        read service_name
+
+                                                        # -u and -n to provide logs about a specific service and --no-pager to outup directly to the terminal
+                                                        $sudo_cmd journalctl -u $service_name -n 50 --no-pager
+                                                fi
+                                        fi
+
+                                elif [[ $answer3 == "No" || $answer3 == "no" ]];then
+                                         echo "$DIVIDER"
+                                         echo "Exiting..."
+                                         break
+                                else
+
+                                        echo "$DIVIDER"
+                                        echo "Invalid Input "
+                                fi
 
 
 
-
-
-
-
-
-
+                        done ;;
 
                 4)
-                        echo "choice 4 to exit"
+
+                        echo "$DIVIDER"
+                        echo "Exiting..."
                         exit 0 ;;
 
                 *)
-                        echo "default choice invalid info" ;;
+                        echo "Invalid Input " ;;
 
                 esac
         done
