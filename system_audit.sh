@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-# =================================================================
-# System Specs Script
+# ==================================================================
+# System Specs & Security Script
 # Author: Kristian Gjidodaj
-# Description: It gathers metrics for CPU, RAM, and Disk.
-# =================================================================
+# Description: It gathers metrics and logs according to user choice.
+# ==================================================================
 
 
 ## Seperating docker containers
@@ -31,8 +31,13 @@ clear # Keeping the terminal clean
 location=$(find $HOME -name "system_audit.sh") #reached some scenarios with directory errors so saving location
 
 #Modifying .bashrc file when it is run for the first time so telemetry command is active and can be run with the command telemetry
+#Since it is being run for the first time also asking user for how big they want the audit.log size
 
-if ! grep -q "alias telemetry=" ~/.bashrc  ;then
+if ! grep -q "alias telemetry=" ~/.bashrc  ;then 
+
+	echo -e "How many lines would you want the log file to be?"
+	read log_lines
+	echo "export log_lines="$log_lines"" >> ~/.bashrc
 
         echo -e "alias telemetry='$location'" >> ~/.bashrc
         echo "Restarting session"
@@ -119,6 +124,16 @@ check_dependencies() {
 DIVIDER="---------------------------------------------------"
 
 echo -e "Hello $user\n"
+
+
+
+## Checking audit.log file for too many lines and limiting the size of the file to avoid memory problems
+
+if [[ -f "$LOG_FILE" ]];then
+	tail -n $log_lines "$LOG_FILE" > "audit.tmp"
+	$sudo_cmd mv "audit.tmp" "$LOG_FILE"
+fi
+
 
 
 # ==========================================
@@ -328,7 +343,7 @@ while :
                                                 fi ;;
                                         4)
 
-                                                { echo -e "$DIVIDER\n                       [Tampered Files]:                       $DIVIDER\n"
+                                                { echo -e "\n$DIVIDER                       [Tampered Files]:                       $DIVIDER\n"
                                                 #using -not -path to avoid some paths that could overwhelm the user and fill up the screen
                                                 $sudo_cmd find / -mmin -60 -type f -not -path "/proc/*" -not -path "/sys/*" -not -path "/run/*" -not -path "/dev/*" -not -path "/var/lib/docker/*" 2>/dev/null
                 } | tee -a "$LOG_FILE" ;;
@@ -370,7 +385,7 @@ while :
                                 done ;;
 
                 3)
-                        while :
+                       { while :
                                 do
                                 echo -e "Would you like to check option 3? (yes/no)\n"
                                 read answer3
@@ -428,16 +443,17 @@ while :
                                 elif [[ $answer3 == "No" || $answer3 == "no" ]];then
                                          echo "$DIVIDER"
                                          echo "Exiting..."
+
+
                                          break
-                                else
+                                 else
 
                                         echo "$DIVIDER"
                                         echo "Invalid Input "
                                 fi
 
-
-
-                        done ;;
+                        done
+	} | tee -a "$LOG_FILE" ;;
 
                 4)
 
@@ -450,4 +466,7 @@ while :
 
                 esac
         done
+
+
+
 exit 0
