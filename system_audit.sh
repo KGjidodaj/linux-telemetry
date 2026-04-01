@@ -92,11 +92,27 @@ check_dependencies() {
 
         if [[ $? -ne 0 ]];then
 
+		# Trying older netstat and if config in case it works then saving them in dep_command variable
+		if [[ $program == "ss" ]];then
+			command -v netstat > /dev/null 2>&1
+			if [[ $? -eq 0 ]];then
+				dep_command="netstat -tulpan"
+				return 0
+			fi
+		else
+			command -v ifconfig >/dev/null 2>&1
+			if [[ $? -eq 0 ]];then
+				dep_command="ifconfig -a"
+				return 0
+			fi
+		fi
+
                 echo "Dependencies missing!!!"
                 echo "Trying to install iproute2:"
-                echo "Might update first and take some time"
+		sleep 2
                 clear
 
+		echo "WARNING: Might Take Some Minutes!"
                 $sudo_cmd apt update >/dev/null 2>&1 #updating in case machine has not been updated
                 $sudo_cmd apt install iproute2 -y >/dev/null 2>&1 #trying to install the program in the background
 
@@ -107,6 +123,12 @@ check_dependencies() {
                         return 1 ##if the program does not exist and could not be installed then an error code is returned to check
                 fi
         else
+		if [[ $program == "ip" ]];then
+			dep_command="ip a"
+		else
+			dep_command="ss -tulpan"
+		fi
+
                 return 0
         fi
 }
@@ -242,26 +264,27 @@ while :
                                         4)
 
                                            #Starting with a network summary and then moving onto more detailed metrics
-                                         { echo "--------Network-Summary--------"
-                                           check_dependencies "ss,"
+                                           echo "--------Network-Summary--------" | tee -a "$LOG_FILE"
+                                           command -v ss >/dev/null 2>&1
                                            if [[ $? -eq 0 ]];then
-                                                   ss -s
+                                                   ss -s | tee -a "$LOG_FILE"
+					   else
+						   echo "ss command does not exist: stopping summary"
                                            fi
-                                           echo -e "--------End-Of-Summary--------\n"
+                                           echo -e "--------End-Of-Summary--------\n" | tee -a "$LOG_FILE"
 
-        } | tee -a "$LOG_FILE"
 
                                            #4.Information about user's Ip and network basics
                                            echo "Would you like to learn about your Network Interface Configuration or Socket Statistics?(1/2)"
                                            read -p "" Network_choice
-                                         { case $Network_choice in
+                                           case $Network_choice in
 
                                                 1)
 
                                                    #Using command ip a to show user ip, status and MAC info
                                                    check_dependencies "ip"
                                                    if [[ $? -eq 0 ]];then
-                                                        ip a
+                                                        $dep_command | tee -a "$LOG_FILE"
                                                    fi ;;
 
                                                 2)
@@ -269,13 +292,12 @@ while :
                                                    #Using command -tulpn flag to show active service ports and listening processes
                                                    check_dependencies "ss"
                                                    if [[ $? -eq 0 ]];then
-                                                        ss -tulpn
+                                                        $dep_command | tee -a "$LOG_FILE"
                                                    fi ;;
 
                                                 *)
                                                    echo -e "Invalid Input\n";;
-                                           esac
-        } | tee -a "$LOG_FILE" ;;
+                                           esac ;;
 
                                         5)
                                            #5. Quit choice
@@ -385,25 +407,27 @@ while :
                                 done ;;
 
                 3)
-                       { while :
+                        while :
                                 do
-                                echo -e "Would you like to check option 3? (yes/no)\n"
+                                echo -e "Would you like to start active remidiation? (yes/no)\n"
                                 read answer3
 
                                 if [[ "$answer3" == "Yes" || "$answer3" == "yes" ]];then
 
-                                        echo "$DIVIDER$DIVIDER"
+                                       { echo "$DIVIDER$DIVIDER"
                                         echo "Here is a list of processes that could be the cause of system slowdown"
                                         echo "$DIVIDER$DIVIDER"
 
                                         # -b in batch mode, -n 1 for there to only be one iteration and head to limit the output
-                                        top -b -n 1 | head -n 25
+                                        top -b -n 1 | head -n 25 
+	} | tee -a "$LOG_FILE"
 
                                         echo "What PID  would you like to terminate? (To skip press enter): "
                                         read PID_tokill
+					echo "                    [PID HUNT]:                 " | tee -a "$LOG_FILE"
 
                                         if  [[ $PID_tokill == "" ]];then
-                                                echo "Skipping..."
+                                                echo "Skipping Hunt Of PID ..." | tee -a "$LOG_FILE"
                                         else
                                                 $sudo_cmd kill "$PID_tokill" > /dev/null 2>&1
                                                 if [[ $? -ne 0 ]];then
@@ -411,39 +435,47 @@ while :
                                                         $sudo_cmd kill -9 "$PID_tokill" > /dev/null 2>&1
 
                                                                 if [[ $? -ne 0 ]];then
-                                                                        echo "Could not kill process"
+                                                                        echo "Could not kill process" | tee -a "$LOG_FILE"
                                                                 else
-                                                                        echo "Killed process successesfully"
+                                                                        echo "Killed process successesfully" | tee -a "$LOG_FILE"
                                                                 fi
                                                 else
-                                                        echo "Killed process successesfully"
+                                                        echo "Killed process successesfully" | tee -a "$LOG_FILE"
                                                 fi
 
                                                 if [[ $machine == "Docker" ]];then
-                                                        echo "stopping here for dockers"
+                                                        echo "stopping here for dockers" | tee -a "$LOG_FILE"
                                                 else
                                                         read -p "Would you like to restart the process?(yes/no): " restart
                                                         if [[ $restart == "y" || $restart == "yes" ]];then
 
                                                                 echo ""
-                                                                echo "(You can find <service_name> by running systemctl status PID)"
+                                                                echo "(You can find <service_name> by running systemctl status <PID>)"
                                                                 read -p "Add <service_name> you want to restart:  " service_name
-                                                                $sudo_cmd systemctl restart $service_name
+								echo "                  [RESTARTING SERVICE]:            " | tee -a "$LOG_FILE"
+
+                                                                $sudo_cmd systemctl restart $service_name > /dev/null 2>&1
                                                         fi
 
                                                         echo "(You can find <service_name> by running systemctl status PID)"
-                                                        echo -e "Would you like to check the logs of the processes? Input <service_name>: \n"
-                                                        read service_name
+                                                        echo -e "Would you like to check the logs of the processes? (Yes/No) \n"
+                                                        read user_choice3
 
-                                                        # -u and -n to provide logs about a specific service and --no-pager to outup directly to the terminal
-                                                        $sudo_cmd journalctl -u $service_name -n 50 --no-pager
+							if [[ $user_choice3 == "Yes" || $user_choice3 == "yes" ]];then
+
+								read -p "Insert service name: " service_name
+	                                                        # -u and -n to provide logs about a specific service and --no-pager to outup directly to the terminal
+								echo "                   [SERVICE LOGS]:                 " | tee -a "$LOG_FILE"
+
+        	                                                $sudo_cmd journalctl -u $service_name -n 50 --no-pager | tee -a "$LOG_FILE"
+							fi
                                                 fi
                                         fi
 
                                 elif [[ $answer3 == "No" || $answer3 == "no" ]];then
-                                         echo "$DIVIDER"
-                                         echo "Exiting..."
 
+                                         echo "$DIVIDER" | tee -a "$LOG_FILE"
+                                         echo "Exiting..." | tee -a "$LOG_FILE"
 
                                          break
                                  else
@@ -452,8 +484,7 @@ while :
                                         echo "Invalid Input "
                                 fi
 
-                        done
-	} | tee -a "$LOG_FILE" ;;
+                        done ;;
 
                 4)
 
@@ -466,7 +497,5 @@ while :
 
                 esac
         done
-
-
 
 exit 0
