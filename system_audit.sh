@@ -20,7 +20,7 @@ fi
 if grep -q "ID_LIKE=debian" /etc/os-release ;then
         OS="Deb"
 else
-        echo -e "Sorry but only Debian compatability exists (at least for now).\nExiting"
+        echo -e "Sorry but only Debian compatibility exists (at least for now).\nExiting"
         exit 0
 fi
 
@@ -28,23 +28,39 @@ fi
 
 
 clear # Keeping the terminal clean
-location=$(find $HOME -name "system_audit.sh") #reached some scenarios with directory errors so saving location
+# using pwd as it is the working directory of the user when they first run the script
+location=$(find $PWD -name "system_audit.sh") #reached some scenarios with directory errors so saving location
 
 #Modifying .bashrc file when it is run for the first time so telemetry command is active and can be run with the command telemetry
 #Since it is being run for the first time also asking user for how big they want the audit.log size
 
-if ! grep -q "alias telemetry=" ~/.bashrc  ;then 
+if ! grep -q "alias telemetry=" $HOME/.bashrc  ;then
 
-	echo -e "How many lines would you want the log file to be?"
-	read log_lines
-	echo "export log_lines="$log_lines"" >> ~/.bashrc
+	# in case of a docker container alias telemetry will never be set, so to avoid re writing lines again and again a check is done
+	if ! grep -q "export log_lines=" $HOME/.bashrc ;then
 
-        echo -e "alias telemetry='$location'" >> ~/.bashrc
-        echo "Restarting session"
-        echo "Script can be run via the (telemetry) command."
-        sleep 1
-        first_time=true
-        exec bash
+	        echo -e "How many lines would you want the log file to be? (Input a number)"
+	        read log_lines
+
+		#checking if the output is a number so an error with tail does not happen
+		if [[ $log_lines =~ ^[0-9]+$ ]];then
+
+		        echo "export log_lines="$log_lines"" >> $HOME/.bashrc
+		fi
+	fi
+
+
+        if [[ $machine != "Docker" ]];then
+                #No need to create alias telemetry in a docker container
+
+                echo -e "alias telemetry='$location'" >> $HOME/.bashrc
+                echo "Restarting session"
+                echo "Script can be run via the (telemetry) command."
+
+                sleep 1
+                first_time=true
+                exec bash
+        fi
 fi
 
 # Variables:
@@ -61,7 +77,7 @@ user=$(whoami)
 ### checking if linux-telemetry directory exists in case user copied file (e.g. to a docker container) without the directory
 directory_location=$(find $HOME -name linux-telemetry)
 
-if [[ directory_location="" ]];then
+if [[ $directory_location == "" ]];then
         mkdir -p "$HOME/linux-telemetry" >/dev/null 2>&1 # in case someone does not already have the directory ready to avoid variable LOG_FILE errors
 fi
 
@@ -92,27 +108,27 @@ check_dependencies() {
 
         if [[ $? -ne 0 ]];then
 
-		# Trying older netstat and if config in case it works then saving them in dep_command variable
-		if [[ $program == "ss" ]];then
-			command -v netstat > /dev/null 2>&1
-			if [[ $? -eq 0 ]];then
-				dep_command="netstat -tulpan"
-				return 0
-			fi
-		else
-			command -v ifconfig >/dev/null 2>&1
-			if [[ $? -eq 0 ]];then
-				dep_command="ifconfig -a"
-				return 0
-			fi
-		fi
+                # Trying older netstat and if config in case it works then saving them in dep_command variable
+                if [[ $program == "ss" ]];then
+                        command -v netstat > /dev/null 2>&1
+                        if [[ $? -eq 0 ]];then
+                                dep_command="netstat -tulpan"
+                                return 0
+                        fi
+                else
+                        command -v ifconfig >/dev/null 2>&1
+                        if [[ $? -eq 0 ]];then
+                                dep_command="ifconfig -a"
+                                return 0
+                        fi
+                fi
 
                 echo "Dependencies missing!!!"
                 echo "Trying to install iproute2:"
-		sleep 2
+                sleep 2
                 clear
 
-		echo "WARNING: Might Take Some Minutes!"
+                echo "WARNING: Might Take Some Minutes!"
                 $sudo_cmd apt update >/dev/null 2>&1 #updating in case machine has not been updated
                 $sudo_cmd apt install iproute2 -y >/dev/null 2>&1 #trying to install the program in the background
 
@@ -123,11 +139,11 @@ check_dependencies() {
                         return 1 ##if the program does not exist and could not be installed then an error code is returned to check
                 fi
         else
-		if [[ $program == "ip" ]];then
-			dep_command="ip a"
-		else
-			dep_command="ss -tulpan"
-		fi
+                if [[ $program == "ip" ]];then
+                        dep_command="ip a"
+                else
+                        dep_command="ss -tulpan"
+                fi
 
                 return 0
         fi
@@ -152,8 +168,8 @@ echo -e "Hello $user\n"
 ## Checking audit.log file for too many lines and limiting the size of the file to avoid memory problems
 
 if [[ -f "$LOG_FILE" ]];then
-	tail -n $log_lines "$LOG_FILE" > "audit.tmp"
-	$sudo_cmd mv "audit.tmp" "$LOG_FILE"
+        tail -n $log_lines "$LOG_FILE" > "audit.tmp"
+        $sudo_cmd mv "audit.tmp" "$LOG_FILE"
 fi
 
 
@@ -268,8 +284,8 @@ while :
                                            command -v ss >/dev/null 2>&1
                                            if [[ $? -eq 0 ]];then
                                                    ss -s | tee -a "$LOG_FILE"
-					   else
-						   echo "ss command does not exist: stopping summary"
+                                           else
+                                                   echo "ss command does not exist: stopping summary"
                                            fi
                                            echo -e "--------End-Of-Summary--------\n" | tee -a "$LOG_FILE"
 
@@ -296,22 +312,30 @@ while :
                                                    fi ;;
 
                                                 *)
-                                                   echo -e "Invalid Input\n";;
+
+                                                   echo -e "Invalid Input\n"
+						   #Invalid input check to not have audit sucssessfully complte
+						   invalid_input=1 ;;
                                            esac ;;
 
                                         5)
+
                                            #5. Quit choice
                                            echo -e "             USER: $user EXITED\n " | tee -a "$LOG_FILE" 
                                            break ;;
 
                                         *)
+
+					   echo ""
                                            echo "Invalid input"  | tee -a "$LOG_FILE" ;;
 
                                 esac
                                 {
                                 echo ""
                                 echo "$DIVIDER"
-                                echo -e "       Audit Successfully Completed.\n\n"
+				if [[ $invalid_input != 1 ]];then
+	                                echo -e "       Audit Successfully Completed.\n\n"
+				fi
         } | tee -a "$LOG_FILE"
 
                         done ;;
@@ -344,8 +368,9 @@ while :
                                                 { echo -e "\n$DIVIDER                       [History]:                       $DIVIDER\n"
 
                                                 echo -e " Here is the bash_history \n"
-                                                cat ~/.bash_history 2> /dev/null | tail -n 100
-                } | tee -a "$LOG_FILE" ;;
+                                                cat $HOME/.bash_history 2> /dev/null | tail -n 120 | less -SN
+                } | tee -a "$LOG_FILE"
+						cat $HOME/.bash_history 2> /dev/null |tail -n 120 >> "$LOG_FILE" ;;
 
                                         3)
 
@@ -355,11 +380,13 @@ while :
 
                                                         echo "Add date from to search from in date format (e.g. 2026-03-30 21:00:00) or string format (e.g. 5 hours ago )"
                                                         read search_date
-                                                        $sudo_cmd journalctl --since "$search_date" | tee -a "$LOG_FILE"
+                                                        $sudo_cmd journalctl --since "$search_date"|less -SN
+							$sudo_cmd journalctl --since "$search_date" >> "$LOG_FILE"
 
                                                 elif [[ -f /var/log/auth.log ]];then
 
-                                                        $sudo_cmd grep "Accepted" /var/log/auth.log | tee -a "$LOG_FILE"
+                                                        $sudo_cmd grep "Accepted" /var/log/auth.log >> "$LOG_FILE"
+							$sudo_cmd grep "Accepted" /var/log/auth.log | tee -a "$LOG_FILE"
                                                 else
                                                         echo "Could not check logs" | tee -a "$LOG_FILE"
                                                 fi ;;
@@ -375,7 +402,7 @@ while :
 
                                                 { echo -e "$DIVIDER\n                       [Kernel Logs]:                       $DIVIDER\n"
                                                 if dmesg -T | tail -n 50 >/dev/null 2>&1;then
-                                                        $sudo_cmd dmesg -T | tail -n 50
+                                                        $sudo_cmd dmesg -T | tail -n 70 | less -SN
                                                 else
                                                         echo "Error: If in docker try running in privilaged mode"
                                                 fi
@@ -409,7 +436,7 @@ while :
                 3)
                         while :
                                 do
-                                echo -e "Would you like to start active remidiation? (yes/no)\n"
+                                echo -e "Would you like to start active remediation? (yes/no)\n"
                                 read answer3
 
                                 if [[ "$answer3" == "Yes" || "$answer3" == "yes" ]];then
@@ -420,11 +447,11 @@ while :
 
                                         # -b in batch mode, -n 1 for there to only be one iteration and head to limit the output
                                         top -b -n 1 | head -n 25 
-	} | tee -a "$LOG_FILE"
+        } | tee -a "$LOG_FILE"
 
                                         echo "What PID  would you like to terminate? (To skip press enter): "
                                         read PID_tokill
-					echo "                    [PID HUNT]:                 " | tee -a "$LOG_FILE"
+                                        echo "                    [PID HUNT]:                 " | tee -a "$LOG_FILE"
 
                                         if  [[ $PID_tokill == "" ]];then
                                                 echo "Skipping Hunt Of PID ..." | tee -a "$LOG_FILE"
@@ -444,7 +471,9 @@ while :
                                                 fi
 
                                                 if [[ $machine == "Docker" ]];then
+							# avoiding systemd errors in docker containers
                                                         echo "stopping here for dockers" | tee -a "$LOG_FILE"
+
                                                 else
                                                         read -p "Would you like to restart the process?(yes/no): " restart
                                                         if [[ $restart == "y" || $restart == "yes" ]];then
@@ -452,7 +481,7 @@ while :
                                                                 echo ""
                                                                 echo "(You can find <service_name> by running systemctl status <PID>)"
                                                                 read -p "Add <service_name> you want to restart:  " service_name
-								echo "                  [RESTARTING SERVICE]:            " | tee -a "$LOG_FILE"
+                                                                echo "                  [RESTARTING SERVICE]:            " | tee -a "$LOG_FILE"
 
                                                                 $sudo_cmd systemctl restart $service_name > /dev/null 2>&1
                                                         fi
@@ -461,14 +490,15 @@ while :
                                                         echo -e "Would you like to check the logs of the processes? (Yes/No) \n"
                                                         read user_choice3
 
-							if [[ $user_choice3 == "Yes" || $user_choice3 == "yes" ]];then
+                                                        if [[ $user_choice3 == "Yes" || $user_choice3 == "yes" ]];then
 
-								read -p "Insert service name: " service_name
-	                                                        # -u and -n to provide logs about a specific service and --no-pager to outup directly to the terminal
-								echo "                   [SERVICE LOGS]:                 " | tee -a "$LOG_FILE"
+                                                                read -p "Insert service name: " service_name
+                                                                # -u and -n to provide logs about a specific service and --no-pager to outup directly to the terminal
+                                                                echo "                   [SERVICE LOGS]:                 " | tee -a "$LOG_FILE"
 
-        	                                                $sudo_cmd journalctl -u $service_name -n 50 --no-pager | tee -a "$LOG_FILE"
-							fi
+                                                                $sudo_cmd journalctl -u $service_name -n 50 --no-pager >> "$LOG_FILE"
+								$sudo_cmd journalctl -u $service_name -n 70 --no-pager | less -SN
+                                                        fi
                                                 fi
                                         fi
 
@@ -499,3 +529,4 @@ while :
         done
 
 exit 0
+
