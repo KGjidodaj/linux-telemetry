@@ -15,14 +15,47 @@ else
 fi
 
 
-## Seperating os-releases if they are not compatible.
+## Seperating os-releases so when using the package manager errors do not occur.
+## grep -q -i to search in teh or-release file not caring with case sensitivity.
+## Seperating update and install commands to be used in check_depemdemcies function
 
-if grep -q "ID_LIKE=debian" /etc/os-release ;then
-        OS="Deb"
+if grep -q -i "debian\|ubuntu\|mint" /etc/os-release 2>/dev/null; then
+
+	OS="Deb"
+        Package_man_update="apt update"
+        Package_man_install="apt install iproute2"
+
+elif grep -q -i "arch\|manjaro" /etc/os-release 2>/dev/null; then
+
+	OS="Arch"
+        Package_man_update="pacman -Sy"
+        Package_man_install="pacman -S iproute2 --noconfirm"
+
+elif grep -q -i "alpine" /etc/os-release 2>/dev/null; then
+
+	OS="Alpine"
+        Package_man_update="apk update"
+        Package_man_install="apk add iproute2"
+
+elif grep -q -i "fedora\|rhel\|centos" /etc/os-release 2>/dev/null; then
+
+	OS="Rhel"
+        Package_man_update="dnf makecache"
+	Package_man_install="dnf install iproute2 -y"
+
+elif grep -q -i "sles\|suse" /etc/os-release 2>/dev/null; then
+
+	OS="Suse"
+	Package_man_update="zyppper refresh"
+	Package_man_install=" zypper install -y iproute2"
+
 else
-        echo -e "Sorry but only Debian compatibility exists (at least for now).\nExiting"
-        exit 0
+
+	OS="unknown"
+        Package_man_update="unknown"
 fi
+
+
 
 
 
@@ -129,8 +162,11 @@ check_dependencies() {
                 clear
 
                 echo "WARNING: Might Take Some Minutes!"
-                $sudo_cmd apt update >/dev/null 2>&1 #updating in case machine has not been updated
-                $sudo_cmd apt install iproute2 -y >/dev/null 2>&1 #trying to install the program in the background
+		# According to the package manager and os release
+
+                $sudo_cmd $Package_man_update  >/dev/null 2>&1 #updating in case machine has not been updated
+                $sudo_cmd $Package_man_install >/dev/null 2>&1 #trying to install the program in the background
+
 
                 if [[ $? -ne 0 ]];then
 
