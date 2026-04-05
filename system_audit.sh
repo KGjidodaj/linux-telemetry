@@ -79,9 +79,6 @@ if ! grep -q "alias telemetry=" $HOME/.bashrc  ;then
 	        echo -e "How many lines would you want the log file to be? (Input a number)"
 		        read log_lines
 
-
-			do
-
 			#checking if the output is a number so an error with tail does not happen
 			if [[ $log_lines =~ ^[0-9]+$ ]];then
 
@@ -584,7 +581,7 @@ while :
                 4)
 
                         echo "$DIVIDER"
-                        echo "Exiting..."
+                        echo " $user   Exiting..."
                         exit 0 ;;
 
                 *)
