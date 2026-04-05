@@ -7,6 +7,15 @@
 # ==================================================================
 
 
+
+## Also adding a check if less command exists to use it or else use cat -n
+if command -v less >/dev/null 2>&1; then
+	page_cmd="less -SN"
+else
+	page_cmd="cat -n"
+fi
+
+
 ## Separating docker containers to avoid errors in stripped down docker containers that would not support ANSI colour output!
 if [[ -f /.dockerenv ]];then
 
@@ -102,7 +111,8 @@ if ! grep -q "alias telemetry=" $HOME/.bashrc  ;then
 			#checking if the output is a number so an error with tail does not happen
 			if [[ $log_lines =~ ^[0-9]+$ ]];then
 
-			        echo "export log_lines="$log_lines"" >> $HOME/.bashrc
+			        # tryign something new echo "export log_lines="$log_lines"" >> $HOME/.bashrc
+				echo "export log_lines=\"$log_lines\"" >> $HOME/.bashrc
 				break
 			else
 
@@ -456,7 +466,7 @@ while :
 
                                                 echo -e " Here is the bash_history \n"
 		} | tee -a "$LOG_FILE"
-                                                tail -n 120 $HOME/.bash_history 2> /dev/null | less -SN
+                                                tail -n 120 $HOME/.bash_history 2> /dev/null | $page_cmd
 						cat $HOME/.bash_history 2> /dev/null |tail -n 120 >> "$LOG_FILE" ;;
 
                                         3)
@@ -469,7 +479,7 @@ while :
                                                         echo "Add date from to search from in date format (e.g. 2026-03-30 21:00:00) or string format (e.g. 5 hours ago )"
                                                         read search_date
 
-                                                        $sudo_cmd journalctl --since "$search_date"|less -SN
+                                                        $sudo_cmd journalctl --since "$search_date" | $page_cmd
 							$sudo_cmd journalctl --since "$search_date" >> "$LOG_FILE"
 
                                                 elif [[ -f /var/log/auth.log ]];then
@@ -490,12 +500,15 @@ while :
                                         5)
 
                                                 echo -e "$DIVIDER\n                       [Kernel Logs]:                       $DIVIDER\n" | tee -a "$LOG_FILE"
-                                                if dmesg -T | tail -n 50 >/dev/null 2>&1;then
-                                                        $sudo_cmd dmesg -T | tail -n 70 | less -SN
-                                                else
-                                                     	echo "Error" >> "$LOG_FILE"
-							echo -e "${Red}Error: If in docker try running in privileged mode${Reset}"
-                                                fi ;;
+						# enountered errors in dockers so adding an else statement in case an error occurs and -T to convert in human readable time
+						if $sudo_cmd dmesg -T >/dev/null 2>&1 ;then
+
+                                                        $sudo_cmd dmesg -T | tail -n 70 | $page_cmd >> "$LOG_FILE"
+						else
+	                                              	echo "Error" >> "$LOG_FILE"
+							# many times in docker if the user has not run the docker in privilaged mode a perimission error might occur with dmesg
+							echo -e "${Red}Error: If in docker try running in privileged mode first${Reset}"
+	                                        fi ;;
 
 
                                         6)
@@ -605,7 +618,7 @@ while :
 	                                                                echo "                   [SERVICE LOGS]:                 " | tee -a "$LOG_FILE"
 
 	                                                                $sudo_cmd journalctl -u $service_name -n 50 --no-pager >> "$LOG_FILE"
-									$sudo_cmd journalctl -u $service_name -n 70 --no-pager | less -SN
+									$sudo_cmd journalctl -u $service_name -n 70 --no-pager | page_cmd
 	                                                        fi
 	                                                fi
 						fi
