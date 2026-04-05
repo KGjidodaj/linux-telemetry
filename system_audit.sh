@@ -7,7 +7,7 @@
 # ==================================================================
 
 
-## Seperating docker containers
+## Seperating docker containers in case I want to add more functionality for non docker machines!
 if [[ -f /.dockerenv ]];then
         machine="Docker"
 else
@@ -72,14 +72,26 @@ if ! grep -q "alias telemetry=" $HOME/.bashrc  ;then
 	# in case of a docker container alias telemetry will never be set, so to avoid re writing lines again and again a check is done
 	if ! grep -q "export log_lines=" $HOME/.bashrc ;then
 
+	# In a while loop to "trap" the user if they do not input a number!
+	while :
+		do
+
 	        echo -e "How many lines would you want the log file to be? (Input a number)"
-	        read log_lines
+		        read log_lines
 
-		#checking if the output is a number so an error with tail does not happen
-		if [[ $log_lines =~ ^[0-9]+$ ]];then
 
-		        echo "export log_lines="$log_lines"" >> $HOME/.bashrc
-		fi
+			do
+
+			#checking if the output is a number so an error with tail does not happen
+			if [[ $log_lines =~ ^[0-9]+$ ]];then
+
+			        echo "export log_lines="$log_lines"" >> $HOME/.bashrc
+			else
+
+				echo "Input a valid integer"
+			fi
+		done
+
 	fi
 
 
@@ -92,17 +104,29 @@ if ! grep -q "alias telemetry=" $HOME/.bashrc  ;then
 
                 sleep 1
                 first_time=true
-                exec bash
+                exec bash # Using exec bash because without it in the same terminal the telemetry command will not work as a restart is needed
         fi
 fi
 
-# Variables:
+### Variables (frequently used) together for easier comprehension and readability :
+
+# 1) Revolving the User :
 
 ## Date_var - session_date_var : Updates with every loop to show the time in the correct format ISO 8601.
-## answer : Checks user answer in the first read.
-## user_choice : Checks user choice for the case statement.
+## answer : Checks like user_choice each answer for case statements
+## user_choice  : Checks user choice for each case statement.
 ## user : checking who the user is when running the script
+
+# 2) Revolving how the script works :
+
 ## LOG_FILE : a specific directory for the audit.log file to be created and updated
+## command : used to check for the command the user wants in case 1 telemetrics
+## sudo_cmd " used to avoid errors with docker containers that usually do not have sudo
+## machine : again like sudo_cmd to distinguish docker containers and avoid errors
+## service_name : for the journalctl and systemclt commands in the active remediation case
+
+### End of variables.
+
 
 session_date_var=$(date "+%Y-%m-%d %H:%M:%S")
 user=$(whoami)
@@ -110,7 +134,8 @@ user=$(whoami)
 ### checking if linux-telemetry directory exists in case user copied file (e.g. to a docker container) without the directory
 directory_location=$(find $HOME -name linux-telemetry)
 
-if [[ $directory_location == "" ]];then
+
+if [[ "$directory_location" == "" ]];then #had some problems so made it with quotes
         mkdir -p "$HOME/linux-telemetry" >/dev/null 2>&1 # in case someone does not already have the directory ready to avoid variable LOG_FILE errors
 fi
 
@@ -414,8 +439,10 @@ while :
 
                                                 if command -v journalctl>/dev/null 2>&1 ;then
 
+							# --since in journalctl needs a search date so it is stored in the variable $search_date
                                                         echo "Add date from to search from in date format (e.g. 2026-03-30 21:00:00) or string format (e.g. 5 hours ago )"
                                                         read search_date
+
                                                         $sudo_cmd journalctl --since "$search_date"|less -SN
 							$sudo_cmd journalctl --since "$search_date" >> "$LOG_FILE"
 
@@ -482,7 +509,7 @@ while :
                                         echo "$DIVIDER$DIVIDER"
 
                                         # -b in batch mode, -n 1 for there to only be one iteration and head to limit the output
-                                        top -b -n 1 | head -n 25 
+                                        top -b -n 1 | head -n 25
         } | tee -a "$LOG_FILE"
 
                                         echo "What PID  would you like to terminate? (To skip press enter): "
@@ -511,14 +538,16 @@ while :
                                                         echo "stopping here for dockers" | tee -a "$LOG_FILE"
 
                                                 else
+							# Since I have acoided systemd dependecies and stripped systems with the if for docker containers I can continue with systemctl and journalctl commands.
                                                         read -p "Would you like to restart the process?(yes/no): " restart
                                                         if [[ $restart == "y" || $restart == "yes" ]];then
 
                                                                 echo ""
-                                                                echo "(You can find <service_name> by running systemctl status <PID>)"
+                                                                echo "(You can find <service_name> by running systemctl status <PID>)" #instructing the user how to find the service name
                                                                 read -p "Add <service_name> you want to restart:  " service_name
                                                                 echo "                  [RESTARTING SERVICE]:            " | tee -a "$LOG_FILE"
 
+								# Doing a restart as many times even a restart is enough to fix services.
                                                                 $sudo_cmd systemctl restart $service_name > /dev/null 2>&1
                                                         fi
 
@@ -529,7 +558,7 @@ while :
                                                         if [[ $user_choice3 == "Yes" || $user_choice3 == "yes" ]];then
 
                                                                 read -p "Insert service name: " service_name
-                                                                # -u and -n to provide logs about a specific service and --no-pager to outup directly to the terminal
+                                                                # -u and -n to provide logs about a specific service and --no-pager to outup directly to the terminal and avoid errors with "$LOG_FILE"
                                                                 echo "                   [SERVICE LOGS]:                 " | tee -a "$LOG_FILE"
 
                                                                 $sudo_cmd journalctl -u $service_name -n 50 --no-pager >> "$LOG_FILE"
