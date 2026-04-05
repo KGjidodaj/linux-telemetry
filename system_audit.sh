@@ -7,17 +7,37 @@
 # ==================================================================
 
 
-## Seperating docker containers in case I want to add more functionality for non docker machines!
+## Separating docker containers to avoid errors in stripped down docker containers that would not support ANSI colour output!
 if [[ -f /.dockerenv ]];then
+
+	## Declaring all the ANSI colours as blank as to not be outputted in docker environmnets
+	Red=""
+	Green=""
+	Yellow=""
+	Cyan=""
+	Reset=""
+	White=""
+
         machine="Docker"
+
 else
+
+	# Declaring actual ANSI colours with \033 instead of \e to avoid errors where it is not recognized.
+
+	Red='\033[1;91m' ## (1;91) for it to be bold high intensity red
+	Green='\033[1;32m' ## (0;32) for it to be bold green
+	Yellow='\033[1;33m' ## (1;33) for it to be bold yellow
+	Cyan='\033[0;36m' ## (0;36) for it to be normal cyan
+	Reset='\033[0m' ## This resets the colours
+	White='\033[1;97m' ## (1;97) for it to be high intensity bold white
+
         machine="NDocker"
 fi
 
 
 ## Seperating os-releases so when using the package manager errors do not occur.
 ## grep -q -i to search in teh or-release file not caring with case sensitivity.
-## Seperating update and install commands to be used in check_depemdemcies function
+## Seperating update and install commands to be used in check_dependencies function
 
 if grep -q -i "debian\|ubuntu\|mint" /etc/os-release 2>/dev/null; then
 
@@ -46,7 +66,7 @@ elif grep -q -i "fedora\|rhel\|centos" /etc/os-release 2>/dev/null; then
 elif grep -q -i "sles\|suse" /etc/os-release 2>/dev/null; then
 
 	OS="Suse"
-	Package_man_update="zyppper refresh"
+	Package_man_update="zypper refresh"
 	Package_man_install=" zypper install -y iproute2"
 
 else
@@ -76,13 +96,14 @@ if ! grep -q "alias telemetry=" $HOME/.bashrc  ;then
 	while :
 		do
 
-	        echo -e "How many lines would you want the log file to be? (Input a number)"
+	        echo -e "${White}How many lines would you want the log file to be? (Input a number)${Reset}"
 		        read log_lines
 
 			#checking if the output is a number so an error with tail does not happen
 			if [[ $log_lines =~ ^[0-9]+$ ]];then
 
 			        echo "export log_lines="$log_lines"" >> $HOME/.bashrc
+				break
 			else
 
 				echo "Input a valid integer"
@@ -96,8 +117,8 @@ if ! grep -q "alias telemetry=" $HOME/.bashrc  ;then
                 #No need to create alias telemetry in a docker container
 
                 echo -e "alias telemetry='$location'" >> $HOME/.bashrc
-                echo "Restarting session"
-                echo "Script can be run via the (telemetry) command."
+                echo -e "${White}Restarting session${Reset}"
+                echo -e "${White}Script can be run via the (telemetry) command.${Reset}"
 
                 sleep 1
                 first_time=true
@@ -178,12 +199,12 @@ check_dependencies() {
                         fi
                 fi
 
-                echo "Dependencies missing!!!"
-                echo "Trying to install iproute2:"
+                echo -e "${Yellow}Dependencies missing!!${Reset}"
+                echo -e "${White}Trying to install iproute2:${Reset}"
                 sleep 2
                 clear
 
-                echo "WARNING: Might Take Some Minutes!"
+                echo -e "${Yellow}WARNING: Might Take Some Minutes!${Reset}"
 		# According to the package manager and os release
 
                 $sudo_cmd $Package_man_update  >/dev/null 2>&1 #updating in case machine has not been updated
@@ -192,8 +213,8 @@ check_dependencies() {
 
                 if [[ $? -ne 0 ]];then
 
-                        echo "Could not install."
-                        echo "Try updating and then installing iproute2"
+                        echo -e "${Red}Could not install.${Reset}"
+                        echo -e "${White}Try updating and then installing iproute2${Reset}"
                         return 1 ##if the program does not exist and could not be installed then an error code is returned to check
                 fi
         else
@@ -219,7 +240,7 @@ check_dependencies() {
 # using a divider to clarify output
 DIVIDER="---------------------------------------------------"
 
-echo -e "Hello $user\n"
+echo -e "Hello $user\n" >> "$LOG_FILE"
 
 
 
@@ -241,8 +262,8 @@ fi
 while :
         do
 
-        echo "What would you like to do"
-        echo -e "1.system-telemetrics (check info about cpu/ram/disk/network)\n2.security-forensics (check possible security breach)\n3.active remediation (check what is causing the system to crash and resolve it)\n4.Exit\n"
+        echo -e "${White}What would you like to do${Reset}\n"
+        echo -e "${Cyan}1.system-telemetrics (check info about cpu/ram/disk/network)\n2.security-forensics (check possible security breach)\n3.active remediation (check what is causing the system to crash and resolve it)\n4.Exit${Reset}\n"
         read answer
         clear
 
@@ -259,8 +280,8 @@ while :
                         while :
                                 do
 
-                                echo "What would you like to do? Here are the options:"
-                                echo -e "1.CPU Info\n2.Ram Info\n3.Disk Info\n4.Network Info\n5.Exit\n"
+                                echo -e "${White}What would you like to do? Here are the options:${Reset}"
+                                echo -e "${Cyan}1.CPU Info\n2.Ram Info\n3.Disk Info\n4.Network Info\n5.Exit${Reset}\n"
 
                                 read user_choice1
 
@@ -293,48 +314,53 @@ while :
                                            # '-h' = human readable form  (MG/GB)
                                            # '/' = root partition (Root) and '.' = working directory
 
-                                           read -p "Would you like to check about root partition or current directory?(1/2): " disk_space
+					   echo -e "${Cyan}Would you like to check about root partition or current directory?(1/2):${Reset} "
+					   read disk_space
                                            case $disk_space in
                                                 1)
 
-                                                   read -p "Would you like to learn about disk usage or free disc space?(du/df): " command
-                                                {  echo ""
+                                                   echo -e "${Cyan}Would you like to learn about disk usage or free disc space?(du/df):${Reset} "
+						   read command
+                                                   echo ""
 
                                                    if [[ $command == "df" ]];then
-                                                        df -h /
+                                                        df -h / | tee -a "$LOG_FILE"
                                                    elif [[ $command == "du" ]];then
-                                                        du -h / --max-depth=1 2>/dev/null
+                                                        du -h / --max-depth=1 2>/dev/null | tee -a "$LOG_FILE"
                                                    else
-                                                        echo "Invalid answer!"
+                                                        echo -e "${Red}Invalid answer!${Reset}"
                                                    fi
-
+						{
                                                    echo -e "\n[*] DISK SPACE ALLOCATION (Root /):"
                                                    echo ""
-        } | tee -a "$LOG_FILE"
+		} | tee -a "$LOG_FILE"
 
                                                    sleep 0.5 ;;
 
                                                 2)
 
-                                                   read -p "Would you like to learn about disk usage or free disc space?(du/df): " command
-                                                {  echo ""
+                                                   echo -e "${Cyan}Would you like to learn about disk usage or free disc space?(du/df):${Reset} "
+						   read command
+                                                   echo "" | tee -a "$LOG_FILE"
 
                                                    if [[ $command == "df" ]];then
-                                                        df -h .
+                                                        df -h . | tee -a "$LOG_FILE"
                                                    elif [[ $command == "du" ]];then
-                                                        du -h . --max-depth=1 2>/dev/null
+                                                        du -h . --max-depth=1 2>/dev/null | tee -a "$LOG_FILE"
                                                    else
-                                                        echo "Invalid answer!"
+                                                        echo -e "${Red}Invalid answer!${Reset}"
                                                    fi
 
-                                                   echo -e "\n[*] DISK SPACE ALLOCATION (Working Direcroty .):"
+                                                {  echo -e "\n[*] DISK SPACE ALLOCATION (Directory .):"
                                                    echo ""
-        } | tee -a "$LOG_FILE"
+		 } | tee -a "$LOG_FILE"
 
-                                                   sleep 0.5;;
+
+                                                   sleep 0.5 ;;
                                            esac
 
-                                           sleep 0.5;;
+                                           sleep 0.5 ;;
+
                                         4)
 
                                            #Starting with a network summary and then moving onto more detailed metrics
@@ -343,13 +369,13 @@ while :
                                            if [[ $? -eq 0 ]];then
                                                    ss -s | tee -a "$LOG_FILE"
                                            else
-                                                   echo "ss command does not exist: stopping summary"
+                                                   echo -e "${Yellow}ss command does not exist: stopping summary${Reset}"
                                            fi
                                            echo -e "--------End-Of-Summary--------\n" | tee -a "$LOG_FILE"
 
 
                                            #4.Information about user's Ip and network basics
-                                           echo "Would you like to learn about your Network Interface Configuration or Socket Statistics?(1/2)"
+                                           echo -e "${Cyan}Would you like to learn about your Network Interface Configuration or Socket Statistics?(1/2)${Reset}"
                                            read -p "" Network_choice
                                            case $Network_choice in
 
@@ -371,7 +397,7 @@ while :
 
                                                 *)
 
-                                                   echo -e "Invalid Input\n"
+                                                   echo -e "${Yellow}Invalid Input\n${Reset}"
 						   #Invalid input check to not have audit sucssessfully complte
 						   invalid_input=1 ;;
                                            esac ;;
@@ -379,22 +405,25 @@ while :
                                         5)
 
                                            #5. Quit choice
-                                           echo -e "             USER: $user EXITED\n " | tee -a "$LOG_FILE" 
+					   echo -e " ${Green} Exiting...${Reset}"
+                                           echo -e "             USER: $user EXITED\n " | tee -a "$LOG_FILE"
+					   clear # clearing screen output
                                            break ;;
 
                                         *)
 
-					   echo ""
-                                           echo "Invalid input"  | tee -a "$LOG_FILE" ;;
+					   echo "" | tee -a "$LOG_FILE"
+                                           echo -e "${Red}Invalid input${Reset}" ;;
 
                                 esac
-                                {
+				{
                                 echo ""
                                 echo "$DIVIDER"
+	} | tee -a "$LOG_FILE"
 				if [[ $invalid_input != 1 ]];then
-	                                echo -e "       Audit Successfully Completed.\n\n"
+	                                echo -e "       ${Green}Audit Successfully Completed.${Reset}\n\n"
+					echo -e "		Audit Successfully Completed \n " >> "$LOG_FILE"
 				fi
-        } | tee -a "$LOG_FILE"
 
                         done ;;
 
@@ -402,8 +431,8 @@ while :
                         while :
                                 do
 
-                                echo "What would you like to check?"
-                                echo -e "1.Who is connected\n2.The command history\n3.Check of potential ssh attempts\n4.Files changed\n5.Kernel Logs\n6.socket statistics\n7.Exit\n"
+                                echo -e "${White}What would you like to check?${Reset}"
+                                echo -e "${Cyan}1.Who is connected\n2.The command history\n3.Check of potential ssh attempts\n4.Files changed\n5.Kernel Logs\n6.socket statistics\n7.Exit${Reset}\n"
                                 read user_choice2
 
                                 case $user_choice2 in
@@ -426,8 +455,8 @@ while :
                                                 { echo -e "\n$DIVIDER                       [History]:                       $DIVIDER\n"
 
                                                 echo -e " Here is the bash_history \n"
-                                                cat $HOME/.bash_history 2> /dev/null | tail -n 120 | less -SN
-                } | tee -a "$LOG_FILE"
+		} | tee -a "$LOG_FILE"
+                                                tail -n 120 $HOME/.bash_history 2> /dev/null | less -SN
 						cat $HOME/.bash_history 2> /dev/null |tail -n 120 >> "$LOG_FILE" ;;
 
                                         3)
@@ -460,13 +489,13 @@ while :
 
                                         5)
 
-                                                { echo -e "$DIVIDER\n                       [Kernel Logs]:                       $DIVIDER\n"
+                                                echo -e "$DIVIDER\n                       [Kernel Logs]:                       $DIVIDER\n" | tee -a "$LOG_FILE"
                                                 if dmesg -T | tail -n 50 >/dev/null 2>&1;then
                                                         $sudo_cmd dmesg -T | tail -n 70 | less -SN
                                                 else
-                                                        echo "Error: If in docker try running in privilaged mode"
-                                                fi
-                } | tee -a "$LOG_FILE" ;;
+                                                     	echo "Error" >> "$LOG_FILE"
+							echo -e "${Red}Error: If in docker try running in privileged mode${Reset}"
+                                                fi ;;
 
 
                                         6)
@@ -482,21 +511,24 @@ while :
 
                                         7)
 
-                                                echo "Exiting..." | tee -a "$LOG_FILE"
-                                                break ;;
+                                                echo "Exiting..." >>  "$LOG_FILE"
+						echo -e "${Green} Exiting... ${Reset}"
+                                                clear # cleaning the screen
+						break ;;
                                         *)
 
-                                                echo "Invalid Input" ;;
+                                                echo -e "${Yellow}Invalid Input${Reset}" ;;
 
                                 esac
-                                        echo "                                    [END OF ACTIVITY]                                              "
+                                      { echo "                                    [END OF ACTIVITY]                                              "
                                         echo -e "$DIVIDER$DIVIDER\n"
+	 } | tee -a "$LOG_FILE"
                                 done ;;
 
                 3)
                         while :
                                 do
-                                echo -e "Would you like to start active remediation? (yes/no)\n"
+                                echo -e "${Cyan}Would you like to start active remediation? (yes/no)${Reset}\n"
                                 read answer3
 
                                 if [[ "$answer3" == "Yes" || "$answer3" == "yes" ]];then
@@ -509,83 +541,102 @@ while :
                                         top -b -n 1 | head -n 25
         } | tee -a "$LOG_FILE"
 
-                                        echo "What PID  would you like to terminate? (To skip press enter): "
+                                        echo -e "${White}What PID  would you like to terminate? (To skip press enter):${Reset} "
                                         read PID_tokill
                                         echo "                    [PID HUNT]:                 " | tee -a "$LOG_FILE"
 
                                         if  [[ $PID_tokill == "" ]];then
                                                 echo "Skipping Hunt Of PID ..." | tee -a "$LOG_FILE"
                                         else
-                                                $sudo_cmd kill "$PID_tokill" > /dev/null 2>&1
-                                                if [[ $? -ne 0 ]];then
 
-                                                        $sudo_cmd kill -9 "$PID_tokill" > /dev/null 2>&1
 
-                                                                if [[ $? -ne 0 ]];then
-                                                                        echo "Could not kill process" | tee -a "$LOG_FILE"
-                                                                else
-                                                                        echo "Killed process successesfully" | tee -a "$LOG_FILE"
-                                                                fi
-                                                else
-                                                        echo "Killed process successesfully" | tee -a "$LOG_FILE"
-                                                fi
+						echo -e "${Yellow} Warning: Would you like to kill the process now?${Reset}"
+						echo -e " ${Yellow}If you do kill it you will not be able to continue (e.g logs)${Reset}\n ${White}I would suggest checking the logs and then asking for active remidition and then killing the process!${Reset}"
+						echo -e "${White}So would you like to kill the PID now? (Yes/No) :${Reset}"
+						read answer2
+						# Checking just to avoid errors if I kill the process and the user still want to check logs of a PID that does not exist
+						if [[ $answer2 == "Yes" || $answer2 == "yes" ]];then
 
-                                                if [[ $machine == "Docker" ]];then
-							# avoiding systemd errors in docker containers
-                                                        echo "stopping here for dockers" | tee -a "$LOG_FILE"
+							#just hiding any output from the user especially if error occurred
+	                                                $sudo_cmd kill "$PID_tokill" > /dev/null 2>&1
+	                                                if [[ $? -ne 0 ]];then
 
-                                                else
-							# Since I have acoided systemd dependecies and stripped systems with the if for docker containers I can continue with systemctl and journalctl commands.
-                                                        read -p "Would you like to restart the process?(yes/no): " restart
-                                                        if [[ $restart == "y" || $restart == "yes" ]];then
+	                                                        $sudo_cmd kill -9 "$PID_tokill" > /dev/null 2>&1
 
-                                                                echo ""
-                                                                echo "(You can find <service_name> by running systemctl status <PID>)" #instructing the user how to find the service name
-                                                                read -p "Add <service_name> you want to restart:  " service_name
-                                                                echo "                  [RESTARTING SERVICE]:            " | tee -a "$LOG_FILE"
+	                                                                if [[ $? -ne 0 ]];then
+	                                                                        echo "Could not kill process" | tee -a "$LOG_FILE"
+	                                                                else
+	                                                                        echo "Killed process successesfully" | tee -a "$LOG_FILE"
+	                                                                fi
+	                                                else
+	                                                        echo "Killed process successesfully" | tee -a "$LOG_FILE"
+	                                                fi
+						else
 
-								# Doing a restart as many times even a restart is enough to fix services.
-                                                                $sudo_cmd systemctl restart $service_name > /dev/null 2>&1
-                                                        fi
+	                                                if [[ $machine == "Docker" ]];then
+								# avoiding systemd errors in docker containers
+	                                                        echo "stopping here for dockers" | tee -a "$LOG_FILE"
 
-                                                        echo "(You can find <service_name> by running systemctl status PID)"
-                                                        echo -e "Would you like to check the logs of the processes? (Yes/No) \n"
-                                                        read user_choice3
+	                                                else
 
-                                                        if [[ $user_choice3 == "Yes" || $user_choice3 == "yes" ]];then
+								# Since I have acoided systemd dependecies and stripped systems with the if for docker containers I can continue with systemctl and journalctl commands.
+	                                                        echo -e "${Cyan}Would you like to restart the process?(yes/no): ${Reset}"
+								read restart
+	                                                        if [[ $restart == "y" || $restart == "yes" ]];then
 
-                                                                read -p "Insert service name: " service_name
-                                                                # -u and -n to provide logs about a specific service and --no-pager to outup directly to the terminal and avoid errors with "$LOG_FILE"
-                                                                echo "                   [SERVICE LOGS]:                 " | tee -a "$LOG_FILE"
+	                                                                echo ""
+	                                                                echo "(You can find <service_name> by running systemctl status <PID>)" #instructing the user how to find the service name
+	                                                                read -p "Add <service_name> you want to restart:  " service_name
+	                                                                echo "                  [RESTARTING SERVICE]:            " | tee -a "$LOG_FILE"
 
-                                                                $sudo_cmd journalctl -u $service_name -n 50 --no-pager >> "$LOG_FILE"
-								$sudo_cmd journalctl -u $service_name -n 70 --no-pager | less -SN
-                                                        fi
-                                                fi
+									# Doing a restart as many times even a restart is enough to fix services.
+	                                                                $sudo_cmd systemctl restart $service_name > /dev/null 2>&1
+	                                                        fi
+
+	                                                        echo -e "${White}(You can find <service_name> by running systemctl status PID)${Reset}"
+	                                                        echo -e "${Cyan}Would you like to check the logs of the processes? (Yes/No) ${Reset}\n"
+	                                                        read user_choice3
+
+	                                                        if [[ $user_choice3 == "Yes" || $user_choice3 == "yes" ]];then
+
+	                                                                echo -e "${White}Insert service name: ${Reset}"
+									read service_name
+	                                                                # -u and -n to provide logs about a specific service and --no-pager to outup directly to the terminal and avoid errors with "$LOG_FILE"
+	                                                                echo "                   [SERVICE LOGS]:                 " | tee -a "$LOG_FILE"
+
+	                                                                $sudo_cmd journalctl -u $service_name -n 50 --no-pager >> "$LOG_FILE"
+									$sudo_cmd journalctl -u $service_name -n 70 --no-pager | less -SN
+	                                                        fi
+	                                                fi
+						fi
                                         fi
 
                                 elif [[ $answer3 == "No" || $answer3 == "no" ]];then
 
                                          echo "$DIVIDER" | tee -a "$LOG_FILE"
-                                         echo "Exiting..." | tee -a "$LOG_FILE"
+                                         echo "Exiting..." >> "$LOG_FILE"
+					 echo -e "${Green}Exiting...${Reset}"
 
                                          break
                                  else
 
-                                        echo "$DIVIDER"
-                                        echo "Invalid Input "
+                                        echo "$DIVIDER" >> "$LOG_FILE"
+                                        echo -e "${Red}Invalid Input${Reset} "
                                 fi
 
                         done ;;
 
                 4)
 
-                        echo "$DIVIDER"
+			echo "$DIVIDER"
+                        echo -e " $user  ${Green} Exiting...${Reset} \n"
+                      { echo "$DIVIDER"
                         echo " $user   Exiting..."
+	} >>  "$LOG_FILE"
                         exit 0 ;;
 
                 *)
-                        echo "Invalid Input " ;;
+                        echo -e "${RED}Invalid Input${Reset} " ;;
 
                 esac
         done
