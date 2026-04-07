@@ -40,7 +40,7 @@ else
 	Reset='\033[0m' ## This resets the colours
 	White='\033[1;97m' ## (1;97) for it to be high intensity bold white
 
-        machine="NDocker"
+        machine="Non Docker"
 fi
 
 
@@ -91,28 +91,27 @@ fi
 
 clear # Keeping the terminal clean
 # using pwd as it is the working directory of the user when they first run the script
-location=$(find $PWD -name "system_audit.sh") #reached some scenarios with directory errors so saving location
+location=$(find "$PWD" -name "system_audit.sh") #reached some scenarios with directory errors so saving location
 
 #Modifying .bashrc file when it is run for the first time so telemetry command is active and can be run with the command telemetry
 #Since it is being run for the first time also asking user for how big they want the audit.log size
 
-if ! grep -q "alias telemetry=" $HOME/.bashrc  ;then
+if ! grep -q "alias telemetry=" "$HOME"/.bashrc  ;then
 
 	# in case of a docker container alias telemetry will never be set, so to avoid re writing lines again and again a check is done
-	if ! grep -q "export log_lines=" $HOME/.bashrc ;then
+	if ! grep -q "export log_lines=" "$HOME"/.bashrc ;then
 
 	# In a while loop to "trap" the user if they do not input a number!
 	while :
 		do
 
 	        echo -e "${White}How many lines would you want the log file to be? (Input a number)${Reset}"
-		        read log_lines
+		        read -r log_lines
 
 			#checking if the output is a number so an error with tail does not happen
 			if [[ $log_lines =~ ^[0-9]+$ ]];then
 
-			        # tryign something new echo "export log_lines="$log_lines"" >> $HOME/.bashrc
-				echo "export log_lines=\"$log_lines\"" >> $HOME/.bashrc
+				echo "export log_lines=\"$log_lines\"" >> "$HOME"/.bashrc
 				break
 			else
 
@@ -126,12 +125,11 @@ if ! grep -q "alias telemetry=" $HOME/.bashrc  ;then
         if [[ $machine != "Docker" ]];then
                 #No need to create alias telemetry in a docker container
 
-                echo -e "alias telemetry='$location'" >> $HOME/.bashrc
+                echo -e "alias telemetry='$location'" >> "$HOME"/.bashrc
                 echo -e "${White}Restarting session${Reset}"
                 echo -e "${White}Script can be run via the (telemetry) command.${Reset}"
 
                 sleep 1
-                first_time=true
                 exec bash # Using exec bash because without it in the same terminal the telemetry command will not work as a restart is needed
         fi
 fi
@@ -160,7 +158,7 @@ session_date_var=$(date "+%Y-%m-%d %H:%M:%S")
 user=$(whoami)
 
 ### checking if linux-telemetry directory exists in case user copied file (e.g. to a docker container) without the directory
-directory_location=$(find $HOME -name linux-telemetry)
+directory_location=$(find "$HOME" -name linux-telemetry)
 
 
 if [[ "$directory_location" == "" ]];then #had some problems so made it with quotes
@@ -190,20 +188,18 @@ fi
 check_dependencies() {
 
         local program=$1 #storing the name into a variable and checking if the program is installed
-        command -v $program > /dev/null 2>&1
+        command -v "$program" > /dev/null 2>&1
 
-        if [[ $? -ne 0 ]];then
+        if  ! command -v "$program" > /dev/null 2>&1 ;then
 
                 # Trying older netstat and if config in case it works then saving them in dep_command variable
                 if [[ $program == "ss" ]];then
-                        command -v netstat > /dev/null 2>&1
-                        if [[ $? -eq 0 ]];then
+                        if  command -v netstat > /dev/null 2>&1 ;then
                                 dep_command="netstat -tulpan"
                                 return 0
                         fi
                 else
-                        command -v ifconfig >/dev/null 2>&1
-                        if [[ $? -eq 0 ]];then
+                        if  command -v ifconfig >/dev/null 2>&1 ;then
                                 dep_command="ifconfig -a"
                                 return 0
                         fi
@@ -217,8 +213,8 @@ check_dependencies() {
                 echo -e "${Yellow}WARNING: Might Take Some Minutes!${Reset}"
 		# According to the package manager and os release
 
-                $sudo_cmd $Package_man_update  >/dev/null 2>&1 #updating in case machine has not been updated
-                $sudo_cmd $Package_man_install >/dev/null 2>&1 #trying to install the program in the background
+                $sudo_cmd "$Package_man_update"  >/dev/null 2>&1 #updating in case machine has not been updated
+                $sudo_cmd "$Package_man_install" >/dev/null 2>&1 #trying to install the program in the background
 
 
                 if [[ $? -ne 0 ]];then
@@ -257,7 +253,7 @@ echo -e "Hello $user\n" >> "$LOG_FILE"
 ## Checking audit.log file for too many lines and limiting the size of the file to avoid memory problems
 
 if [[ -f "$LOG_FILE" ]];then
-        tail -n $log_lines "$LOG_FILE" > "audit.tmp"
+        tail -n "$log_lines" "$LOG_FILE" > "audit.tmp"
         $sudo_cmd mv "audit.tmp" "$LOG_FILE"
 fi
 
@@ -274,11 +270,12 @@ while :
 
         echo -e "${White}What would you like to do${Reset}\n"
         echo -e "${Cyan}1.system-telemetrics (check info about cpu/ram/disk/network)\n2.security-forensics (check possible security breach)\n3.active remediation (check what is causing the system to crash and resolve it)\n4.Exit${Reset}\n"
-        read answer
+        read -r answer
         clear
 
         { echo "$DIVIDER"
         echo -e "[SESSION STARTED: $session_date_var]"  #Session date that states when the user started the script
+	echo "[USER: $user] [OS: $OS] [MACHINE: $machine] "
         echo "$DIVIDER"
 } | tee -a "$LOG_FILE"
 
@@ -293,7 +290,7 @@ while :
                                 echo -e "${White}What would you like to do? Here are the options:${Reset}"
                                 echo -e "${Cyan}1.CPU Info\n2.Ram Info\n3.Disk Info\n4.Network Info\n5.Exit${Reset}\n"
 
-                                read user_choice1
+                                read -r user_choice1
 
 
                               { echo "$DIVIDER"
@@ -325,12 +322,12 @@ while :
                                            # '/' = root partition (Root) and '.' = working directory
 
 					   echo -e "${Cyan}Would you like to check about root partition or current directory?(1/2):${Reset} "
-					   read disk_space
+					   read -r disk_space
                                            case $disk_space in
                                                 1)
 
                                                    echo -e "${Cyan}Would you like to learn about disk usage or free disc space?(du/df):${Reset} "
-						   read command
+						   read -r command
                                                    echo ""
 
                                                    if [[ $command == "df" ]];then
@@ -350,7 +347,7 @@ while :
                                                 2)
 
                                                    echo -e "${Cyan}Would you like to learn about disk usage or free disc space?(du/df):${Reset} "
-						   read command
+						   read -r command
                                                    echo "" | tee -a "$LOG_FILE"
 
                                                    if [[ $command == "df" ]];then
@@ -375,8 +372,8 @@ while :
 
                                            #Starting with a network summary and then moving onto more detailed metrics
                                            echo "--------Network-Summary--------" | tee -a "$LOG_FILE"
-                                           command -v ss >/dev/null 2>&1
-                                           if [[ $? -eq 0 ]];then
+
+                                           if command -v ss >/dev/null 2>&1 ;then
                                                    ss -s | tee -a "$LOG_FILE"
                                            else
                                                    echo -e "${Yellow}ss command does not exist: stopping summary${Reset}"
@@ -386,7 +383,7 @@ while :
 
                                            #4.Information about user's Ip and network basics
                                            echo -e "${Cyan}Would you like to learn about your Network Interface Configuration or Socket Statistics?(1/2)${Reset}"
-                                           read -p "" Network_choice
+                                           read -r -p "" Network_choice
                                            case $Network_choice in
 
                                                 1)
@@ -443,7 +440,7 @@ while :
 
                                 echo -e "${White}What would you like to check?${Reset}"
                                 echo -e "${Cyan}1.Who is connected\n2.The command history\n3.Check of potential ssh attempts\n4.Files changed\n5.Kernel Logs\n6.socket statistics\n7.Exit${Reset}\n"
-                                read user_choice2
+                                read -r user_choice2
 
                                 case $user_choice2 in
 
@@ -466,8 +463,8 @@ while :
 
                                                 echo -e " Here is the bash_history \n"
 		} | tee -a "$LOG_FILE"
-                                                tail -n 120 $HOME/.bash_history 2> /dev/null | $page_cmd
-						cat $HOME/.bash_history 2> /dev/null |tail -n 120 >> "$LOG_FILE" ;;
+                                                tail -n 120 "$HOME"/.bash_history 2> /dev/null | $page_cmd
+						cat "$HOME"/.bash_history 2> /dev/null |tail -n 120 >> "$LOG_FILE" ;;
 
                                         3)
 
@@ -477,7 +474,7 @@ while :
 
 							# --since in journalctl needs a search date so it is stored in the variable $search_date
                                                         echo "Add date from to search from in date format (e.g. 2026-03-30 21:00:00) or string format (e.g. 5 hours ago )"
-                                                        read search_date
+                                                        read -r search_date
 
                                                         $sudo_cmd journalctl --since "$search_date" | $page_cmd
 							$sudo_cmd journalctl --since "$search_date" >> "$LOG_FILE"
@@ -499,11 +496,11 @@ while :
 
                                         5)
 
-                                                echo -e "$DIVIDER\n                       [Kernel Logs]:                       $DIVIDER\n" | tee -a "$LOG_FILE"
+                                                echo -e "\n$DIVIDER                       [Kernel Logs]:                       $DIVIDER\n" | tee -a "$LOG_FILE"
 						# enountered errors in dockers so adding an else statement in case an error occurs and -T to convert in human readable time
 						if $sudo_cmd dmesg -T >/dev/null 2>&1 ;then
 
-                                                        $sudo_cmd dmesg -T | tail -n 70 | $page_cmd >> "$LOG_FILE"
+                                                        $sudo_cmd dmesg -T | tail -n 70 | $page_cmd | tee -a "$LOG_FILE"
 						else
 	                                              	echo "Error" >> "$LOG_FILE"
 							# many times in docker if the user has not run the docker in privilaged mode a perimission error might occur with dmesg
@@ -542,7 +539,7 @@ while :
                         while :
                                 do
                                 echo -e "${Cyan}Would you like to start active remediation? (yes/no)${Reset}\n"
-                                read answer3
+                                read -r answer3
 
                                 if [[ "$answer3" == "Yes" || "$answer3" == "yes" ]];then
 
@@ -555,7 +552,7 @@ while :
         } | tee -a "$LOG_FILE"
 
                                         echo -e "${White}What PID  would you like to terminate? (To skip press enter):${Reset} "
-                                        read PID_tokill
+                                        read -r PID_tokill
                                         echo "                    [PID HUNT]:                 " | tee -a "$LOG_FILE"
 
                                         if  [[ $PID_tokill == "" ]];then
@@ -566,17 +563,14 @@ while :
 						echo -e "${Yellow} Warning: Would you like to kill the process now?${Reset}"
 						echo -e " ${Yellow}If you do kill it you will not be able to continue (e.g logs)${Reset}\n ${White}I would suggest checking the logs and then asking for active remidition and then killing the process!${Reset}"
 						echo -e "${White}So would you like to kill the PID now? (Yes/No) :${Reset}"
-						read answer2
+						read -r answer2
 						# Checking just to avoid errors if I kill the process and the user still want to check logs of a PID that does not exist
 						if [[ $answer2 == "Yes" || $answer2 == "yes" ]];then
 
 							#just hiding any output from the user especially if error occurred
-	                                                $sudo_cmd kill "$PID_tokill" > /dev/null 2>&1
-	                                                if [[ $? -ne 0 ]];then
+	                                                if $sudo_cmd kill "$PID_tokill" > /dev/null 2>&1 ;then
 
-	                                                        $sudo_cmd kill -9 "$PID_tokill" > /dev/null 2>&1
-
-	                                                                if [[ $? -ne 0 ]];then
+	                                                                if $sudo_cmd kill -9 "$PID_tokill" > /dev/null 2>&1 ;then
 	                                                                        echo "Could not kill process" | tee -a "$LOG_FILE"
 	                                                                else
 	                                                                        echo "Killed process successesfully" | tee -a "$LOG_FILE"
@@ -594,31 +588,31 @@ while :
 
 								# Since I have acoided systemd dependecies and stripped systems with the if for docker containers I can continue with systemctl and journalctl commands.
 	                                                        echo -e "${Cyan}Would you like to restart the process?(yes/no): ${Reset}"
-								read restart
+								read -r restart
 	                                                        if [[ $restart == "y" || $restart == "yes" ]];then
 
 	                                                                echo ""
 	                                                                echo "(You can find <service_name> by running systemctl status <PID>)" #instructing the user how to find the service name
-	                                                                read -p "Add <service_name> you want to restart:  " service_name
+	                                                                read -r -p "Add <service_name> you want to restart:  " service_name
 	                                                                echo "                  [RESTARTING SERVICE]:            " | tee -a "$LOG_FILE"
 
 									# Doing a restart as many times even a restart is enough to fix services.
-	                                                                $sudo_cmd systemctl restart $service_name > /dev/null 2>&1
+	                                                                $sudo_cmd systemctl restart "$service_name" > /dev/null 2>&1
 	                                                        fi
 
 	                                                        echo -e "${White}(You can find <service_name> by running systemctl status PID)${Reset}"
 	                                                        echo -e "${Cyan}Would you like to check the logs of the processes? (Yes/No) ${Reset}\n"
-	                                                        read user_choice3
+	                                                        read -r user_choice3
 
 	                                                        if [[ $user_choice3 == "Yes" || $user_choice3 == "yes" ]];then
 
 	                                                                echo -e "${White}Insert service name: ${Reset}"
-									read service_name
+									read -r service_name
 	                                                                # -u and -n to provide logs about a specific service and --no-pager to outup directly to the terminal and avoid errors with "$LOG_FILE"
 	                                                                echo "                   [SERVICE LOGS]:                 " | tee -a "$LOG_FILE"
 
-	                                                                $sudo_cmd journalctl -u $service_name -n 50 --no-pager >> "$LOG_FILE"
-									$sudo_cmd journalctl -u $service_name -n 70 --no-pager | page_cmd
+	                                                                $sudo_cmd journalctl -u "$service_name" -n 50 --no-pager >> "$LOG_FILE"
+									$sudo_cmd journalctl -u "$service_name" -n 70 --no-pager | page_cmd
 	                                                        fi
 	                                                fi
 						fi
