@@ -9,10 +9,12 @@ It acts like a "First-Responder" runbook. You drop it into any bare-metal Linux,
 * **Dynamic Log Rotation:** The script prevents disk exhaustion by actively monitoring the `audit.log` file size every time it is run. During initialization, it prompts the user for a preferred log size limit, exports it dynamically to `.bashrc`, and automatically updates to preserve disk space.
 * **Context-Aware Execution:** Automatically detects the underlying OS (`/etc/os-release`) and adjusts package managers (`apt`, `pacman`, `apk`, `dnf`, `zypper`) and commands accordingly.
 * **Dependency Auto-Remediation:** The script automatically checks for missing networking packages (like `iproute2` to track socket statistics) and attempts to install them gracefully in the background without crashing.
+* **Interactive Network||Server Health Checks:** Integrates ICMP connectivity triage (`Ping`) directly into the logging pipeline, dynamically bypassing the execution if a stripped-down Docker environment is detected.
 * **Docker Safeguards:** Identifies containerized environments via `/.dockerenv` and disables incompatible commands (like `systemd` / `journalctl`) to prevent execution failures. It also dynamically strips ANSI color outputs to keep logs clean in minimal environments.
 * **Subshell UX Handling & ANSI UI:** Input prompts are strategically extracted from logging pipes to prevent terminal-freezing glitches. The dashboard features a complete, context-aware ANSI color interface for a premium User Experience.
 * **Security Forensics:** Scans for recently tampered files (`find / -mmin`), reviews kernel logs (`dmesg`), and analyzes SSH login attempts, helping the user pinpoint possible breaches.
 * **Active Remediation:** Allows the user to identify resource-heavy PIDs with the `top` command, execute graceful or forceful kills, and automatically restart affected services by securely prompting for the exact service name.
+
 
 ### Testing & Environment Certification
 To ensure maximum portability and zero host-system corruption, the telemetry utility was extensively tested inside isolated Docker Containers running stripped-down Ubuntu environments. This guarantees it can be safely deployed on any production bare-metal server or headless container.

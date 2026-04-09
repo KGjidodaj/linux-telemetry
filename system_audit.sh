@@ -36,7 +36,7 @@ else
 	Red='\033[1;91m' ## (1;91) for it to be bold high intensity red
 	Green='\033[1;32m' ## (0;32) for it to be bold green
 	Yellow='\033[1;33m' ## (1;33) for it to be bold yellow
-	Cyan='\033[0;36m' ## (0;36) for it to be normal cyan
+	Cyan='\033[1;36m' ## (0;36) for it to be bold cyan
 	Reset='\033[0m' ## This resets the colours
 	White='\033[1;97m' ## (1;97) for it to be high intensity bold white
 
@@ -378,33 +378,71 @@ while :
                                            else
                                                    echo -e "${Yellow}ss command does not exist: stopping summary${Reset}"
                                            fi
-                                           echo -e "--------End-Of-Summary--------\n" | tee -a "$LOG_FILE"
+
+					   # Using ping command if not in docker (as to avoid depndency errors) to check network "health"
+					   if [[ $machine != "Docker" ]] ;then
+
+						sleep 1
+						echo "$DIVIDER" | tee -a "$LOG_FILE"
+						echo -e "${Cyan}Would you like to check your internet or a custom IP? (1/2):${Reset} \n"
+						read -r answer1
+
+						case $answer1 in
+
+							1)
+							   # using -c 3 flag for only three checks to be done and using 8.8.8.8 as a reliable server
+							   if ping -c 3 8.8.8.8 >/dev/null 2>&1 ;then
+								echo -e "${Green}You have an active internet connection${Reset}"
+								echo "Internet Connection Is Active." >> "$LOG_FILE"
+							   else
+								echo "Internet Connection Is Down" >> "$LOG_FILE"
+	   						   	echo -e "${Red}Internet is Down${Reset}"
+							   fi ;;
+
+							2)
+							   #asking the user for the IP adress to check
+							   echo -e "${White}Input the IP address you would like to check:${Reset} "
+							   read -r IP_Add
+
+							   if ping -c 3 "$IP_Add" >/dev/null 2>&1 ;then
+								echo "Machine with IP: $IP_Add is up" >> "$LOG_FILE"
+								echo  -e "${Green}The machine you are trying to reach is up${Reset}"
+							   else
+								echo "Machine with IP: $IP_Add is down" >> "$LOG_FILE"
+								echo -e "${Red}The machine you are trying to reach is down${Reset}"
+							   fi ;;
+							esac
+					else
+						echo "Bypassing for docker..."
+					fi
+
+
+
+                                           echo -e "\n--------End-Of-Summary--------\n" | tee -a "$LOG_FILE"
 
 
                                            #4.Information about user's Ip and network basics
-                                           echo -e "${Cyan}Would you like to learn about your Network Interface Configuration or Socket Statistics?(1/2)${Reset}"
+                                           echo -e "${Cyan}Would you like to learn about your Network Interface Configuration or Socket Statistics?(1/2)\nPress Enter to skip${Reset}"
                                            read -r -p "" Network_choice
                                            case $Network_choice in
 
                                                 1)
 
                                                    #Using command ip a to show user ip, status and MAC info
-                                                   check_dependencies "ip"
-                                                   if [[ $? -eq 0 ]];then
+                                                   if check_dependencies "ip" ;then
                                                         $dep_command | tee -a "$LOG_FILE"
                                                    fi ;;
 
                                                 2)
 
                                                    #Using command -tulpn flag to show active service ports and listening processes
-                                                   check_dependencies "ss"
-                                                   if [[ $? -eq 0 ]];then
+                                                   if check_dependencies "ss" ;then
                                                         $dep_command | tee -a "$LOG_FILE"
                                                    fi ;;
 
                                                 *)
 
-                                                   echo -e "${Yellow}Invalid Input\n${Reset}"
+                                                   echo -e "${Yellow}Invalid Input-Skipping\n${Reset}"
 						   #Invalid input check to not have audit sucssessfully complte
 						   invalid_input=1 ;;
                                            esac ;;
@@ -612,7 +650,7 @@ while :
 	                                                                echo "                   [SERVICE LOGS]:                 " | tee -a "$LOG_FILE"
 
 	                                                                $sudo_cmd journalctl -u "$service_name" -n 50 --no-pager >> "$LOG_FILE"
-									$sudo_cmd journalctl -u "$service_name" -n 70 --no-pager | page_cmd
+									$sudo_cmd journalctl -u "$service_name" -n 70 --no-pager | $page_cmd
 	                                                        fi
 	                                                fi
 						fi
@@ -643,7 +681,7 @@ while :
                         exit 0 ;;
 
                 *)
-                        echo -e "${RED}Invalid Input${Reset} " ;;
+                        echo -e "${Red}Invalid Input${Reset} " ;;
 
                 esac
         done
