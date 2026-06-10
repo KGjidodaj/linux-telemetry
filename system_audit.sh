@@ -101,6 +101,7 @@ if ! grep -q "alias telemetry=" "$HOME"/.bashrc  ;then
 	# in case of a docker container alias telemetry will never be set, so to avoid re writing lines again and again a check is done
 	if ! grep -q "export log_lines=" "$HOME"/.bashrc ;then
 
+	echo -e "${Yellow} Warning:\nYour Log File is stored in $HOME/linux-telemetry/audit.log ${Reset}"
 	# In a while loop to "trap" the user if they do not input a number!
 	while :
 		do
@@ -154,7 +155,7 @@ fi
 ### End of variables.
 
 
-session_date_var=$(date "+%Y-%m-%d %H:%M:%S")
+session_date_var=$(date "+%Y-%m-%dT%H:%M:%S")
 user=$(whoami)
 
 ### checking if linux-telemetry directory exists in case user copied file (e.g. to a docker container) without the directory
@@ -294,7 +295,7 @@ while :
 
 
                               { echo "$DIVIDER"
-                                Date_var=$(date "+%Y-%m-%d %H:%M:%S")
+                                Date_var=$(date "+%Y-%m-%dT%H:%M:%S")
                                 echo "   SYSTEM AUDIT REPORT - $Date_var "
                                 echo  "$DIVIDER"
                                 sleep 0.5
@@ -606,16 +607,17 @@ while :
 						if [[ $answer2 == "Yes" || $answer2 == "yes" ]];then
 
 							#just hiding any output from the user especially if error occurred
-	                                                if $sudo_cmd kill "$PID_tokill" > /dev/null 2>&1 ;then
+                                                        if $sudo_cmd kill "$PID_tokill" > /dev/null 2>&1 ;then
+                                                                        echo "Killed process successesfully" | tee -a "$LOG_FILE"
+                                                        else
+                                                                if $sudo_cmd kill -9 "$PID_tokill" > /dev/null 2>&1 ;then
+                                                                        echo "Killed process successesfully" | tee -a "$LOG_FILE"
+                                                                else
+                                                                        echo "Could not kill process" | tee -a "$LOG_FILE"
+                                                                fi
 
-	                                                                if $sudo_cmd kill -9 "$PID_tokill" > /dev/null 2>&1 ;then
-	                                                                        echo "Could not kill process" | tee -a "$LOG_FILE"
-	                                                                else
-	                                                                        echo "Killed process successesfully" | tee -a "$LOG_FILE"
-	                                                                fi
-	                                                else
-	                                                        echo "Killed process successesfully" | tee -a "$LOG_FILE"
-	                                                fi
+                                                        fi
+
 						else
 
 	                                                if [[ $machine == "Docker" ]];then
